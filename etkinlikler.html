@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5. Sınıf - Işık Ünitesi Etkileşimli Etkinlikler</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            animation: fadeIn 0.5s;
+        }
+        .modal-overlay.hidden { display: none; }
+        .modal-box {
+            background: linear-gradient(135deg, #1a1a3e, #302b63);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 520px;
+            width: 90%;
+            text-align: center;
+            border: 2px solid rgba(255,255,255,0.15);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .modal-box h2 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #f9d423, #ff4e50);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .modal-box p { color: #b8b5ff; margin-bottom: 20px; }
+        .team-options { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
+        .team-btn {
+            padding: 12px 22px;
+            border-radius: 50px;
+            border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-family: 'Nunito', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .team-btn:hover { border-color: #f9d423; background: rgba(249,212,35,0.15); }
+        .team-btn.selected { border-color: #38ef7d; background: rgba(56,239,125,0.2); }
+        .custom-team {
+            display: flex; gap: 10px; margin-top: 15px; justify-content: center;
+        }
+        .custom-team input {
+            padding: 10px 16px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.08); color: #fff; font-family: 'Nunito'; font-size: 0.95rem;
+            width: 220px; text-align: center;
+        }
+        .custom-team input::placeholder { color: rgba(255,255,255,0.4); }
+        .modal-start {
+            margin-top: 20px; padding: 14px 40px; border-radius: 50px; border: none;
+            background: linear-gradient(135deg, #38ef7d, #11998e);
+            color: #fff; font-family: 'Nunito'; font-size: 1.1rem; font-weight: 800;
+            cursor: pointer; transition: all 0.3s;
+        }
+        .modal-start:hover { transform: scale(1.05); box-shadow: 0 8px 25px rgba(56,239,125,0.3); }
+        .modal-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        /* ===== LEADERBOARD ===== */
+        .leaderboard {
+            position: fixed; top: 15px; right: 15px; z-index: 1000;
+            background: rgba(15,12,41,0.95); backdrop-filter: blur(15px);
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 16px; padding: 14px 20px;
+            min-width: 200px; text-align: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+        }
+        .leaderboard .team-name { font-size: 0.85rem; color: #b8b5ff; margin-bottom: 4px; }
+        .leaderboard .total-score {
+            font-size: 1.8rem; font-weight: 800;
+            background: linear-gradient(90deg, #f9d423, #ff4e50);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .leaderboard .score-label { font-size: 0.75rem; color: #888; }
+        .score-pop { animation: scorePop 0.4s ease; }
+        @keyframes scorePop {
+            0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); }
+        }
+
+        /* ===== TIMER ===== */
+        .timer-bar {
+            display: none; align-items: center; gap: 12px; justify-content: center;
+            margin: 12px 0; padding: 12px 20px;
+            background: rgba(255,255,255,0.07); border-radius: 50px;
+        }
+        .timer-bar.active { display: flex; }
+        .timer-ring { width: 44px; height: 44px; position: relative; }
+        .timer-ring svg { transform: rotate(-90deg); }
+        .timer-ring circle { fill: none; stroke-width: 4; }
+        .timer-ring .bg { stroke: rgba(255,255,255,0.1); }
+        .timer-ring .fg { stroke: #38ef7d; stroke-linecap: round; transition: stroke-dashoffset 0.3s, stroke 0.3s; }
+        .timer-ring .fg.warning { stroke: #f9d423; }
+        .timer-ring .fg.danger { stroke: #eb3349; }
+        .timer-text { font-size: 1.4rem; font-weight: 800; min-width: 50px; }
+        .timer-text.warning { color: #f9d423; }
+        .timer-text.danger { color: #eb3349; }
+        .timer-label { color: #b8b5ff; font-size: 0.9rem; }
+
+        /* ===== HEADER ===== */
+        .main-header { text-align: center; padding: 40px 20px 20px; }
+        .main-header h1 {
+            font-size: 2.4rem; font-weight: 800;
+            background: linear-gradient(90deg, #f9d423, #ff4e50);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .main-header p { font-size: 1.1rem; color: #b8b5ff; margin-top: 8px; }
+
+        /* ===== NAV ===== */
+        .nav-tabs { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; padding: 20px; }
+        .nav-tab {
+            padding: 14px 28px; border: none; border-radius: 50px;
+            font-family: 'Nunito'; font-size: 1rem; font-weight: 700;
+            cursor: pointer; transition: all 0.3s; color: #fff;
+            position: relative; overflow: hidden;
+        }
+        .nav-tab::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.1); border-radius: 50px; transition: all 0.3s;
+        }
+        .nav-tab:hover::before { background: rgba(255,255,255,0.2); }
+        .nav-tab.active::before { background: rgba(255,255,255,0.25); }
+        .tab-1 { background: linear-gradient(135deg, #f9d423, #f83600); }
+        .tab-2 { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .tab-3 { background: linear-gradient(135deg, #6a11cb, #2575fc); }
+        .nav-tab.active { transform: scale(1.08); box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
+
+        /* ===== SECTIONS ===== */
+        .section { display: none; max-width: 1100px; margin: 0 auto; padding: 20px; animation: fadeIn 0.5s; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .section-header {
+            background: rgba(255,255,255,0.08); border-radius: 20px; padding: 25px 30px;
+            margin-bottom: 25px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+        }
+        .section-header h2 { font-size: 1.6rem; margin-bottom: 8px; }
+        .section-header .kazanim { font-size: 0.95rem; color: #c5c3ff; line-height: 1.6; }
+        .section-header .kazanim strong { color: #f9d423; }
+
+        /* ===== BADGE ===== */
+        .sb-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 6px;
+            font-size: 0.7rem; font-weight: 800; color: #fff;
+            margin-left: 6px; vertical-align: middle; letter-spacing: 0.5px;
+        }
+        .sb-a { background: #e67e22; } .sb-b { background: #3498db; }
+        .sb-c { background: #9b59b6; } .sb-d { background: #1abc9c; }
+        .sb-ab { background: linear-gradient(90deg, #e67e22, #3498db); }
+        .sb-bc { background: linear-gradient(90deg, #3498db, #9b59b6); }
+
+        /* ===== CARD ===== */
+        .activity-card {
+            background: rgba(255,255,255,0.07); border-radius: 20px; padding: 30px;
+            margin-bottom: 25px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1); transition: transform 0.3s;
+        }
+        .activity-card:hover { transform: translateY(-3px); }
+        .activity-card h3 {
+            font-size: 1.3rem; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .activity-card h3 .icon { font-size: 1.5rem; }
+        .activity-card p { color: #c5c3ff; margin-bottom: 15px; line-height: 1.6; }
+
+        canvas { border-radius: 16px; display: block; margin: 0 auto; cursor: crosshair; max-width: 100%; }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 12px 26px; border: none; border-radius: 50px;
+            font-family: 'Nunito'; font-size: 0.95rem; font-weight: 700;
+            cursor: pointer; transition: all 0.3s; color: #fff; margin: 5px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .btn-success { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .btn-warning { background: linear-gradient(135deg, #f9d423, #f83600); }
+        .btn-danger { background: linear-gradient(135deg, #eb3349, #f45c43); }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(0,0,0,0.3); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+        /* ===== DRAG & DROP ===== */
+        .dd-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        .dd-zone {
+            min-width: 240px; min-height: 200px;
+            border: 3px dashed rgba(255,255,255,0.3); border-radius: 16px;
+            padding: 20px; text-align: center; flex: 1; transition: all 0.3s;
+        }
+        .dd-zone.over { border-color: #38ef7d; background: rgba(56,239,125,0.1); }
+        .dd-zone h4 { font-size: 1.1rem; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 2px solid rgba(255,255,255,0.2); }
+        .dd-item {
+            display: inline-block; padding: 10px 20px; margin: 6px;
+            border-radius: 50px; font-weight: 700; cursor: grab;
+            transition: all 0.2s; font-size: 0.95rem; user-select: none;
+        }
+        .dd-item:active { cursor: grabbing; transform: scale(1.1); }
+        .dd-item.correct { background: #38ef7d !important; color: #000 !important; animation: pulse 0.5s; }
+        .dd-item.wrong { background: #eb3349 !important; color: #fff !important; animation: shake 0.5s; }
+        @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+
+        .source-pool {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+            margin: 20px 0; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 16px;
+        }
+
+        /* ===== QUIZ ===== */
+        .quiz-option {
+            display: block; width: 100%; padding: 14px 20px; margin: 8px 0;
+            border: 2px solid rgba(255,255,255,0.2); border-radius: 12px;
+            background: rgba(255,255,255,0.05); color: #fff;
+            font-family: 'Nunito'; font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; text-align: left;
+        }
+        .quiz-option:hover { border-color: #667eea; background: rgba(102,126,234,0.15); }
+        .quiz-option.selected { border-color: #667eea; background: rgba(102,126,234,0.25); }
+        .quiz-option.correct-answer { border-color: #38ef7d; background: rgba(56,239,125,0.25); }
+        .quiz-option.wrong-answer { border-color: #eb3349; background: rgba(235,51,73,0.25); }
+
+        /* ===== BUZZER ===== */
+        .buzzer-container {
+            text-align: center; padding: 30px;
+            background: rgba(255,255,255,0.03); border-radius: 16px; margin: 15px 0;
+        }
+        .buzzer-question {
+            font-size: 1.3rem; font-weight: 800; margin-bottom: 20px;
+            min-height: 60px; display: flex; align-items: center; justify-content: center;
+        }
+        .buzzer-buttons { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+        .buzzer-btn {
+            padding: 16px 36px; border: 3px solid; border-radius: 16px;
+            font-family: 'Nunito'; font-size: 1.2rem; font-weight: 800;
+            cursor: pointer; transition: all 0.2s; min-width: 140px;
+        }
+        .buzzer-btn:hover { transform: scale(1.08); }
+        .buzzer-btn:active { transform: scale(0.95); }
+        .buzzer-btn:disabled { opacity: 0.4; transform: none !important; cursor: not-allowed; }
+        .buzzer-btn.true-btn { background: rgba(56,239,125,0.15); border-color: #38ef7d; color: #38ef7d; }
+        .buzzer-btn.false-btn { background: rgba(235,51,73,0.15); border-color: #eb3349; color: #eb3349; }
+        .buzzer-btn.correct-flash { animation: correctFlash 0.6s; }
+        .buzzer-btn.wrong-flash { animation: wrongFlash 0.6s; }
+        @keyframes correctFlash {
+            0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 30px rgba(56,239,125,0.6); transform: scale(1.1); }
+        }
+        @keyframes wrongFlash {
+            0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 30px rgba(235,51,73,0.6); }
+            25% { transform: translateX(-5px); } 75% { transform: translateX(5px); }
+        }
+        .buzzer-score-line { margin-top: 15px; font-size: 1.1rem; font-weight: 700; }
+
+        /* ===== FAST LABEL ===== */
+        .fast-label-area {
+            text-align: center; padding: 25px;
+            background: rgba(255,255,255,0.03); border-radius: 16px; margin: 15px 0;
+        }
+        .fast-label-item {
+            font-size: 2rem; font-weight: 800; margin-bottom: 20px;
+            min-height: 70px; display: flex; align-items: center; justify-content: center; gap: 12px;
+        }
+        .fast-label-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .fast-label-btn {
+            padding: 14px 30px; border: 3px solid; border-radius: 50px;
+            font-family: 'Nunito'; font-size: 1.05rem; font-weight: 800;
+            cursor: pointer; transition: all 0.2s; min-width: 160px;
+        }
+        .fast-label-btn:hover { transform: scale(1.05); }
+        .fast-label-btn:disabled { opacity: 0.4; transform: none !important; cursor: not-allowed; }
+        .fl-saydam { background: rgba(56,239,125,0.1); border-color: #38ef7d; color: #38ef7d; }
+        .fl-yari { background: rgba(249,212,35,0.1); border-color: #f9d423; color: #f9d423; }
+        .fl-opak { background: rgba(235,51,73,0.1); border-color: #eb3349; color: #eb3349; }
+
+        /* ===== TARGET SHADOW ===== */
+        .target-challenge {
+            text-align: center; padding: 15px;
+            background: rgba(249,212,35,0.08); border: 2px solid rgba(249,212,35,0.3);
+            border-radius: 16px; margin: 15px 0;
+        }
+        .target-challenge .target-val { font-size: 2rem; font-weight: 800; color: #f9d423; }
+        .target-challenge .current-val { font-size: 1.2rem; font-weight: 700; margin-top: 5px; }
+        .target-match { color: #38ef7d !important; }
+
+        /* ===== SCORE DISPLAY ===== */
+        .score-display {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.1); padding: 10px 22px;
+            border-radius: 50px; font-weight: 700; font-size: 1.1rem; margin: 10px 0;
+        }
+
+        /* ===== CONTROLS ===== */
+        .control-row {
+            display: flex; align-items: center; gap: 15px; margin: 12px auto;
+            justify-content: center; flex-wrap: wrap; max-width: 600px;
+        }
+        .control-row label { font-weight: 700; font-size: 0.95rem; min-width: 190px; text-align: right; }
+        .control-row input[type="range"] {
+            -webkit-appearance: none; flex: 1; max-width: 250px;
+            height: 8px; border-radius: 4px; background: rgba(255,255,255,0.2); outline: none;
+        }
+        .control-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
+            background: linear-gradient(135deg, #f9d423, #f83600); cursor: pointer;
+        }
+        .control-row .val-input {
+            width: 80px; padding: 6px 10px; border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1);
+            color: #fff; font-family: 'Nunito'; font-weight: 700; font-size: 0.95rem; text-align: center;
+        }
+        .control-row .unit { font-size: 0.85rem; color: #b8b5ff; min-width: 25px; }
+
+        /* ===== FEEDBACK ===== */
+        .feedback {
+            margin-top: 15px; padding: 15px 20px; border-radius: 12px;
+            font-weight: 700; text-align: center; display: none;
+        }
+        .feedback.show { display: block; animation: fadeIn 0.4s; }
+        .feedback.success { background: rgba(56,239,125,0.2); border: 1px solid #38ef7d; }
+        .feedback.error { background: rgba(235,51,73,0.2); border: 1px solid #eb3349; }
+        .feedback.info { background: rgba(102,126,234,0.2); border: 1px solid #667eea; }
+
+        /* ===== OBS TABLE ===== */
+        .obs-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .obs-table th, .obs-table td { padding: 12px 16px; border: 1px solid rgba(255,255,255,0.2); text-align: center; }
+        .obs-table th { background: rgba(255,255,255,0.1); font-weight: 700; }
+        .obs-table input {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px; padding: 8px; color: #fff;
+            font-family: 'Nunito'; width: 100%; text-align: center;
+        }
+        .obs-table input::placeholder { color: rgba(255,255,255,0.4); }
+
+        /* ===== SCENARIO ===== */
+        .scenario-card {
+            background: rgba(106,17,203,0.15); border: 2px solid rgba(106,17,203,0.4);
+            border-radius: 16px; padding: 20px; margin: 15px 0;
+        }
+        .scenario-card .scenario-q { font-size: 1.05rem; font-weight: 700; margin-bottom: 12px; line-height: 1.5; }
+        .scenario-card .scenario-options { display: flex; flex-wrap: wrap; gap: 10px; }
+        .scenario-card .scenario-opt {
+            padding: 10px 20px; border-radius: 50px; border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05); color: #fff;
+            font-family: 'Nunito'; font-weight: 700; cursor: pointer; transition: all 0.3s;
+        }
+        .scenario-card .scenario-opt:hover { border-color: #667eea; }
+        .scenario-card .scenario-opt.selected { border-color: #667eea; background: rgba(102,126,234,0.2); }
+        .scenario-card .scenario-opt.correct-answer { border-color: #38ef7d; background: rgba(56,239,125,0.2); }
+        .scenario-card .scenario-opt.wrong-answer { border-color: #eb3349; background: rgba(235,51,73,0.2); }
+
+        /* ===== CHECKLIST ===== */
+        .checklist { list-style: none; padding: 0; }
+        .checklist li {
+            padding: 10px 15px; margin: 6px 0; border-radius: 10px;
+            background: rgba(255,255,255,0.05); cursor: pointer;
+            transition: all 0.3s; display: flex; align-items: center; gap: 10px;
+        }
+        .checklist li:hover { background: rgba(255,255,255,0.1); }
+        .checklist li .check-icon {
+            width: 24px; height: 24px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.4);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: all 0.3s;
+        }
+        .checklist li.checked .check-icon { background: #38ef7d; border-color: #38ef7d; }
+        .checklist li.checked .check-icon::after { content: '✓'; color: #000; font-weight: 800; }
+        .progress-bar-container {
+            width: 100%; height: 12px; background: rgba(255,255,255,0.1);
+            border-radius: 6px; margin: 15px 0; overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%; border-radius: 6px;
+            background: linear-gradient(90deg, #38ef7d, #11998e);
+            transition: width 0.5s ease; width: 0%;
+        }
+
+        .tooltip { font-size: 0.85rem; color: #b8b5ff; font-style: italic; margin-bottom: 10px; }
+
+        /* ===== STARS ===== */
+        .stars {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: -1; overflow: hidden;
+        }
+        .star {
+            position: absolute; background: #fff; border-radius: 50%;
+            animation: twinkle 3s infinite alternate;
+        }
+        @keyframes twinkle { 0% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            .main-header h1 { font-size: 1.6rem; }
+            .nav-tab { padding: 10px 18px; font-size: 0.85rem; }
+            .activity-card { padding: 20px; }
+            .dd-zone { min-width: 100%; }
+            .leaderboard { top: auto; bottom: 10px; right: 10px; padding: 10px 14px; min-width: 150px; }
+            .leaderboard .total-score { font-size: 1.3rem; }
+            .control-row { flex-direction: column; gap: 8px; }
+            .control-row label { text-align: center; min-width: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="stars" id="starsContainer"></div>
+
+<!-- ===== GRUP GİRİŞ MODALI ===== -->
+<div class="modal-overlay" id="teamModal">
+    <div class="modal-box">
+        <h2>🔦 Işık Ünitesi</h2>
+        <p>5. Sınıf Fen Bilimleri • Ünite 4</p>
+        <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Takım Adını Seç veya Yaz:</h3>
+        <div class="team-options">
+            <button class="team-btn" onclick="selectTeam(this,'⚡ Fotonlar')">⚡ Fotonlar</button>
+            <button class="team-btn" onclick="selectTeam(this,'🌑 Gölge Avcıları')">🌑 Gölge Avcıları</button>
+            <button class="team-btn" onclick="selectTeam(this,'🔬 Bilim Kâşifleri')">🔬 Bilim Kâşifleri</button>
+            <button class="team-btn" onclick="selectTeam(this,'☀️ Işık Savaşçıları')">☀️ Işık Savaşçıları</button>
+            <button class="team-btn" onclick="selectTeam(this,'🌈 Prizma Takımı')">🌈 Prizma Takımı</button>
+        </div>
+        <div class="custom-team">
+            <input type="text" id="customTeamInput" placeholder="Veya kendi takım adını yaz..." oninput="onCustomTeam()">
+        </div>
+        <button class="modal-start" id="startBtn" onclick="startApp()" disabled>🚀 Başla!</button>
+    </div>
+</div>
+
+<!-- ===== LEADERBOARD ===== -->
+<div class="leaderboard" id="leaderboard" style="display:none;">
+    <div class="team-name" id="lbTeamName">Takım</div>
+    <div class="total-score" id="lbTotalScore">0</div>
+    <div class="score-label">TOPLAM PUAN</div>
+</div>
+
+<!-- HEADER -->
+<div class="main-header" id="mainContent" style="display:none;">
+    <h1>🔦 Işık Ünitesi – Etkileşimli Etkinlikler</h1>
+    <p>5. Sınıf Fen Bilimleri • Ünite 4: Işığın Yayılması</p>
+</div>
+
+<!-- NAV -->
+<div class="nav-tabs" id="navTabs" style="display:none;">
+    <button class="nav-tab tab-1 active" onclick="showSection(1)">☀️ Bölüm 1: Işığın Yayılması</button>
+    <button class="nav-tab tab-2" onclick="showSection(2)">🔍 Bölüm 2: Madde ve Işık</button>
+    <button class="nav-tab tab-3" onclick="showSection(3)">🌑 Bölüm 3: Tam Gölge</button>
+</div>
+
+<!-- ============================================================ -->
+<!-- BÖLÜM 1 -->
+<!-- ============================================================ -->
+<div class="section active" id="section1" style="display:none;">
+    <div class="section-header">
+        <h2>☀️ Bölüm 1: Işığın Yayılması</h2>
+        <div class="kazanim"><strong>FB.5.4.1.1.</strong> Bir kaynaktan çıkan ışığın her yönde doğrusal bir yol izlediğini gözlem yoluyla açıklayabilme</div>
+    </div>
+
+    <!-- 1.1 Simülasyon Yarışı -->
+    <div class="activity-card">
+        <h3><span class="icon">🔬</span> Etkinlik 1.1 – Simülasyon Yarışı <span class="sb-badge sb-a">SBa</span></h3>
+        <p>Işık kaynağını doğru yere koyarak engellere çarpmadan hedefe ulaştır!</p>
+        <p class="tooltip">💡 "Yeni Tur" butonuna bas, ardından canvas'a tıklayarak ışık kaynağını yerleştir.</p>
+        <div class="timer-bar" id="timer1_1">
+            <div class="timer-ring"><svg width="44" height="44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" id="timerRing1_1" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="0"/></svg></div>
+            <span class="timer-text" id="timerText1_1">60</span>
+            <span class="timer-label">saniye</span>
+            <button class="btn btn-primary" onclick="startGenericTimer('1_1',60)" id="timerBtn1_1" style="padding:8px 18px;font-size:0.8rem;">⏱️ Başlat</button>
+        </div>
+        <canvas id="lightCanvas" width="700" height="400" style="background:#111;"></canvas>
+        <div style="text-align:center;margin-top:15px;">
+            <button class="btn btn-warning" onclick="clearLightCanvas()">🗑️ Temizle</button>
+            <button class="btn btn-primary" onclick="toggleRayCount()">🔄 Işın: <span id="rayCountLabel">12</span></button>
+            <button class="btn btn-success" onclick="newObstacleRound()">🎯 Yeni Tur</button>
+        </div>
+        <div id="lightObservation" class="feedback info show" style="margin-top:15px;">ℹ️ "Yeni Tur" butonuna basarak engelleri ve hedefi oluştur!</div>
+    </div>
+
+    <!-- 1.2 Takım Gözlem Formu -->
+    <div class="activity-card">
+        <h3><span class="icon">📝</span> Etkinlik 1.2 – Takım Gözlem Formu <span class="sb-badge sb-b">SBb</span></h3>
+        <p>Gözlemlerini takımınla birlikte tabloya kaydet. En iyi açıklamayı yapan takım ekstra puan alır!</p>
+        <table class="obs-table">
+            <thead><tr><th>Deney</th><th>Işık Kaynağı</th><th>Işık Nasıl Yayıldı?</th><th>Takım Gözlemi</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td><input type="text" placeholder="Örn: El feneri" id="obs1_src"></td><td><input type="text" placeholder="Örn: Düz çizgi" id="obs1_path"></td><td><input type="text" placeholder="Gözleminizi yazın" id="obs1_note"></td></tr>
+                <tr><td>2</td><td><input type="text" placeholder="Işık kaynağı" id="obs2_src"></td><td><input type="text" placeholder="Yayılma şekli" id="obs2_path"></td><td><input type="text" placeholder="Gözleminizi yazın" id="obs2_note"></td></tr>
+                <tr><td>3</td><td><input type="text" placeholder="Işık kaynağı" id="obs3_src"></td><td><input type="text" placeholder="Yayılma şekli" id="obs3_path"></td><td><input type="text" placeholder="Gözleminizi yazın" id="obs3_note"></td></tr>
+            </tbody>
+        </table>
+        <div style="text-align:center;"><button class="btn btn-success" onclick="saveObservations()">💾 Gözlemleri Kaydet (+10 puan)</button></div>
+        <div id="obsFeedback" class="feedback"></div>
+    </div>
+
+    <!-- 1.3 Buzzer Yarışması -->
+    <div class="activity-card">
+        <h3><span class="icon">🔔</span> Etkinlik 1.3 – Buzzer Yarışması <span class="sb-badge sb-c">SBc</span></h3>
+        <p>Hızlı bas, doğru cevapla! İlk bilen takım puanı kapar!</p>
+        <div class="timer-bar" id="timer1_3">
+            <div class="timer-ring"><svg width="44" height="44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" id="timerRing1_3" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="0"/></svg></div>
+            <span class="timer-text" id="timerText1_3">60</span>
+            <span class="timer-label">saniye</span>
+            <button class="btn btn-primary" onclick="startBuzzerTimer()" id="buzzerTimerBtn" style="padding:8px 18px;font-size:0.8rem;">⏱️ Başlat</button>
+        </div>
+        <div class="buzzer-container">
+            <div class="buzzer-question" id="buzzerQ">🔔 Hazır mısın? Zamanlayıcıyı başlat!</div>
+            <div class="buzzer-buttons">
+                <button class="buzzer-btn true-btn" id="buzzerTrue" onclick="buzzerAnswer(true)" disabled>✅ DOĞRU</button>
+                <button class="buzzer-btn false-btn" id="buzzerFalse" onclick="buzzerAnswer(false)" disabled>❌ YANLIŞ</button>
+            </div>
+            <div class="buzzer-score-line">Soru: <span id="buzzerCurrent">0</span>/5 &nbsp;|&nbsp; ⭐ Doğru: <span id="buzzerCorrect">0</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- BÖLÜM 2 -->
+<!-- ============================================================ -->
+<div class="section" id="section2">
+    <div class="section-header">
+        <h2>🔍 Bölüm 2: Madde ve Işık</h2>
+        <div class="kazanim"><strong>FB.5.4.2.1.</strong> Maddeleri ışığı geçirme durumlarına göre sınıflandırabilme</div>
+    </div>
+
+    <!-- 2.1 -->
+    <div class="activity-card">
+        <h3><span class="icon">🧪</span> Etkinlik 2.1 – Maddelerin Işığı Geçirme Nitelikleri <span class="sb-badge sb-a">SBa</span></h3>
+        <p>Her maddeye tıkla ve ışığı nasıl geçirdiğini keşfet!</p>
+        <div id="materialExplorer" style="display:flex;flex-wrap:wrap;gap:15px;justify-content:center;"></div>
+        <div id="materialInfo" class="feedback info" style="display:none;"></div>
+    </div>
+
+    <!-- 2.2 Bayrak Yarışı -->
+    <div class="activity-card">
+        <h3><span class="icon">🏁</span> Etkinlik 2.2 – Bayrak Yarışı <span class="sb-badge sb-bc">SBb-c</span></h3>
+        <p>Sırayla tahtaya kalkın! Her üye bir maddeyi doğru kutuya sürüklesin. En hızlı ve doğru takım kazanır!</p>
+        <div class="timer-bar" id="timer2_2">
+            <div class="timer-ring"><svg width="44" height="44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" id="timerRing2_2" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="0"/></svg></div>
+            <span class="timer-text" id="timerText2_2">60</span>
+            <span class="timer-label">saniye</span>
+            <button class="btn btn-primary" onclick="startGenericTimer('2_2',60)" id="timerBtn2_2" style="padding:8px 18px;font-size:0.8rem;">⏱️ Başlat</button>
+        </div>
+        <div class="source-pool" id="sourcePool2"></div>
+        <div class="dd-container">
+            <div class="dd-zone" id="zone-saydam" ondrop="dropItem(event,'saydam')" ondragover="allowDrop(event)" ondragenter="enterZone(event)" ondragleave="leaveZone(event)">
+                <h4>🟢 Saydam<br><small>(Işığı geçirir)</small></h4>
+            </div>
+            <div class="dd-zone" id="zone-yariSaydam" ondrop="dropItem(event,'yariSaydam')" ondragover="allowDrop(event)" ondragenter="enterZone(event)" ondragleave="leaveZone(event)">
+                <h4>🟡 Yarı Saydam<br><small>(Bir kısmını geçirir)</small></h4>
+            </div>
+            <div class="dd-zone" id="zone-saydam-degil" ondrop="dropItem(event,'saydam-degil')" ondragover="allowDrop(event)" ondragenter="enterZone(event)" ondragleave="leaveZone(event)">
+                <h4>🔴 Saydam Değil<br><small>(Işığı geçirmez)</small></h4>
+            </div>
+        </div>
+        <div style="text-align:center;margin-top:15px;">
+            <button class="btn btn-success" onclick="checkClassification()">✅ Kontrol Et</button>
+            <button class="btn btn-warning" onclick="resetClassification()">🔄 Sıfırla</button>
+        </div>
+        <div class="score-display" id="classScore" style="display:none;">⭐ <span id="classScoreVal">0</span>/12</div>
+        <div id="classFeedback" class="feedback"></div>
+    </div>
+
+    <!-- 2.3 Hızlı Etiketleme -->
+    <div class="activity-card">
+        <h3><span class="icon">⚡</span> Etkinlik 2.3 – Hızlı Etiketleme! <span class="sb-badge sb-d">SBç</span></h3>
+        <p>Ekranda beliren maddeye en hızlı doğru butonu bas! Her doğru cevap puan kazandırır.</p>
+        <div class="timer-bar" id="timer2_3">
+            <div class="timer-ring"><svg width="44" height="44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" id="timerRing2_3" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="0"/></svg></div>
+            <span class="timer-text" id="timerText2_3">45</span>
+            <span class="timer-label">saniye</span>
+            <button class="btn btn-primary" onclick="startFastLabel()" id="fastLabelStartBtn" style="padding:8px 18px;font-size:0.8rem;">⏱️ Başlat</button>
+        </div>
+        <div class="fast-label-area">
+            <div class="fast-label-item" id="fastLabelItem">🎯 Hazır mısın? Zamanlayıcıyı başlat!</div>
+            <div class="fast-label-buttons">
+                <button class="fast-label-btn fl-saydam" onclick="fastLabelPick('saydam')" id="flBtnSaydam" disabled>🟢 Saydam</button>
+                <button class="fast-label-btn fl-yari" onclick="fastLabelPick('yariSaydam')" id="flBtnYari" disabled>🟡 Yarı Saydam</button>
+                <button class="fast-label-btn fl-opak" onclick="fastLabelPick('saydam-degil')" id="flBtnOpak" disabled>🔴 Saydam Değil</button>
+            </div>
+            <div class="buzzer-score-line" style="margin-top:15px;">Madde: <span id="flCurrent">0</span>/<span id="flTotal">0</span> &nbsp;|&nbsp; ⭐ Doğru: <span id="flCorrect">0</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- BÖLÜM 3 -->
+<!-- ============================================================ -->
+<div class="section" id="section3">
+    <div class="section-header">
+        <h2>🌑 Bölüm 3: Tam Gölgenin Oluşumu</h2>
+        <div class="kazanim"><strong>FB.5.4.3.1.</strong> Tam gölgeye yönelik bilimsel gözlem yapabilme</div>
+    </div>
+
+    <!-- 3.1 Hedef Gölge -->
+    <div class="activity-card">
+        <h3><span class="icon">🔦</span> Etkinlik 3.1 – Hedef Gölgeyi Bul! <span class="sb-badge sb-ab">SBa-b</span></h3>
+        <p>Sürgüleri kullanarak veya kutulara değer girerek hedef gölge boyutuna ulaş!</p>
+        <div class="target-challenge" id="targetChallenge">
+            <div>🎯 Hedef Gölge Boyutu:</div>
+            <div class="target-val" id="targetShadowVal">-- cm</div>
+            <div class="current-val" id="currentShadowLine">Şu anki gölge: <span id="currentShadowVal">--</span> cm</div>
+            <button class="btn btn-warning" onclick="newShadowTarget()" style="margin-top:10px;">🎲 Yeni Hedef</button>
+        </div>
+        <div class="timer-bar" id="timer3_1">
+            <div class="timer-ring"><svg width="44" height="44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" id="timerRing3_1" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="0"/></svg></div>
+            <span class="timer-text" id="timerText3_1">60</span>
+            <span class="timer-label">saniye</span>
+            <button class="btn btn-primary" onclick="startGenericTimer('3_1',60)" id="timerBtn3_1" style="padding:8px 18px;font-size:0.8rem;">⏱️ Başlat</button>
+        </div>
+        <canvas id="shadowCanvas" width="700" height="400" style="background:#111;"></canvas>
+        <div class="control-row">
+            <label>📏 Cisim Boyutu:</label>
+            <input type="range" id="objSize" min="2" max="20" value="6" step="0.5" oninput="syncFromSlider('objSize')">
+            <input type="number" class="val-input" id="objSizeInput" value="6" min="2" max="20" step="0.5" oninput="syncFromInput('objSize')">
+            <span class="unit">cm</span>
+        </div>
+        <div class="control-row">
+            <label>💡 Işık Kaynağı Uzaklığı:</label>
+            <input type="range" id="lightDist" min="5" max="50" value="20" step="0.5" oninput="syncFromSlider('lightDist')">
+            <input type="number" class="val-input" id="lightDistInput" value="20" min="5" max="50" step="0.5" oninput="syncFromInput('lightDist')">
+            <span class="unit">cm</span>
+        </div>
+        <div class="control-row">
+            <label>📐 Perde Uzaklığı:</label>
+            <input type="range" id="screenDist" min="5" max="30" value="15" step="0.5" oninput="syncFromSlider('screenDist')">
+            <input type="number" class="val-input" id="screenDistInput" value="15" min="5" max="30" step="0.5" oninput="syncFromInput('screenDist')">
+            <span class="unit">cm</span>
+        </div>
+        <div id="shadowInfo" class="feedback info show">ℹ️ Sürgüleri hareket ettirerek veya kutulara değer girerek gölgenin boyutunu gözlemle!</div>
+    </div>
+
+    <!-- 3.2 Veri Kayıt -->
+    <div class="activity-card">
+        <h3><span class="icon">📊</span> Etkinlik 3.2 – Gölge Veri Kayıt Tablosu <span class="sb-badge sb-b">SBb</span></h3>
+        <p>Simülasyondan elde ettiğin verileri tabloya kaydet ve karşılaştır.</p>
+        <table class="obs-table">
+            <thead><tr><th>Deney</th><th>Cisim (cm)</th><th>Işık Uzaklığı (cm)</th><th>Perde Uzaklığı (cm)</th><th>Gölge (cm)</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td><input type="number" step="0.1" placeholder="cm" id="sh1_obj"></td><td><input type="number" step="0.1" placeholder="cm" id="sh1_light"></td><td><input type="number" step="0.1" placeholder="cm" id="sh1_screen"></td><td><input type="number" step="0.1" placeholder="cm" id="sh1_shadow"></td></tr>
+                <tr><td>2</td><td><input type="number" step="0.1" placeholder="cm" id="sh2_obj"></td><td><input type="number" step="0.1" placeholder="cm" id="sh2_light"></td><td><input type="number" step="0.1" placeholder="cm" id="sh2_screen"></td><td><input type="number" step="0.1" placeholder="cm" id="sh2_shadow"></td></tr>
+                <tr><td>3</td><td><input type="number" step="0.1" placeholder="cm" id="sh3_obj"></td><td><input type="number" step="0.1" placeholder="cm" id="sh3_light"></td><td><input type="number" step="0.1" placeholder="cm" id="sh3_screen"></td><td><input type="number" step="0.1" placeholder="cm" id="sh3_shadow"></td></tr>
+            </tbody>
+        </table>
+        <div style="text-align:center;">
+            <button class="btn btn-primary" onclick="autoFillShadow()">📥 Simülasyondan Doldur</button>
+            <button class="btn btn-success" onclick="saveShadowObs()">💾 Kaydet (+10 puan)</button>
+        </div>
+        <div id="shadowObsFeedback" class="feedback"></div>
+    </div>
+
+    <!-- 3.3 Değişken Senaryoları -->
+    <div class="activity-card">
+        <h3><span class="icon">🧠</span> Etkinlik 3.3 – Değişkenleri Keşfet <span class="sb-badge sb-c">SBc</span></h3>
+        <p>Senaryoları oku, takımınla tartış ve doğru değişkeni bul!</p>
+        <div id="scenarioContainer"></div>
+        <div style="text-align:center;margin-top:15px;">
+            <button class="btn btn-primary" onclick="checkScenarios()">✅ Kontrol Et</button>
+            <button class="btn btn-warning" onclick="resetScenarios()">🔄 Sıfırla</button>
+        </div>
+        <div class="score-display" id="scenarioScore" style="display:none;">⭐ <span id="scenarioScoreVal">0</span>/5</div>
+        <div id="scenarioFeedback" class="feedback"></div>
+    </div>
+
+    <!-- 3.4 Kontrol Listesi -->
+    <div class="activity-card">
+        <h3><span class="icon">✅</span> Etkinlik 3.4 – Bilgi Kontrol Listesi</h3>
+        <p>Öğrendiklerini gözden geçir ve tamamladığın maddeleri işaretle.</p>
+        <div class="progress-bar-container"><div class="progress-bar-fill" id="checklistProgress"></div></div>
+        <p style="text-align:center;font-weight:700;" id="checklistPercent">0% Tamamlandı</p>
+        <ul class="checklist" id="checklist3">
+            <li onclick="toggleCheck(this)"><span class="check-icon"></span> Tam gölgenin ne olduğunu biliyorum.</li>
+            <li onclick="toggleCheck(this)"><span class="check-icon"></span> Tam gölgenin oluşması için saydam olmayan cisim gerektiğini biliyorum.</li>
+            <li onclick="toggleCheck(this)"><span class="check-icon"></span> Işık kaynağı yaklaştıkça gölgenin büyüdüğünü açıklayabilirim.</li>
+            <li onclick="toggleCheck(this)"><span class="check-icon"></span> Cisim büyüdükçe gölgenin de büyüdüğünü açıklayabilirim.</li>
+            <li onclick="toggleCheck(this)"><span class="check-icon"></span> Perdeyi cisme yaklaştırınca gölge boyutunun değiştiğini biliyorum.</li>
+            <li onclick="toggleCheck(this)"><span class="check-icon"></span> Gölge ile cismin şeklinin aynı olduğunu biliyorum.</li>
+            <li onclick="toggleCheck(this)"><span class="check-icon"></span> Bağımlı ve bağımsız değişkenleri tanıyabilirim.</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- JAVASCRIPT -->
+<!-- ============================================================ -->
+<script>
+// ===========================
+// STARS
+// ===========================
+(function(){
+    const c=document.getElementById('starsContainer');
+    for(let i=0;i<100;i++){
+        const s=document.createElement('div'); s.className='star';
+        const sz=Math.random()*3+1;
+        s.style.width=sz+'px'; s.style.height=sz+'px';
+        s.style.top=Math.random()*100+'%'; s.style.left=Math.random()*100+'%';
+        s.style.animationDelay=Math.random()*3+'s';
+        s.style.animationDuration=(Math.random()*2+2)+'s';
+        c.appendChild(s);
+    }
+})();
+
+// ===========================
+// TEAM & SCORE
+// ===========================
+let teamName='', totalScore=0;
+let scoreAwarded = {}; // prevent double awards
+
+function selectTeam(btn,name){
+    document.querySelectorAll('.team-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('customTeamInput').value='';
+    teamName=name;
+    document.getElementById('startBtn').disabled=false;
+}
+function onCustomTeam(){
+    const v=document.getElementById('customTeamInput').value.trim();
+    document.querySelectorAll('.team-btn').forEach(b=>b.classList.remove('selected'));
+    teamName=v;
+    document.getElementById('startBtn').disabled=!v;
+}
+function startApp(){
+    if(!teamName) return;
+    document.getElementById('teamModal').classList.add('hidden');
+    document.getElementById('mainContent').style.display='block';
+    document.getElementById('navTabs').style.display='flex';
+    document.getElementById('section1').style.display='block';
+    document.getElementById('leaderboard').style.display='block';
+    document.getElementById('lbTeamName').textContent=teamName;
+    updateLeaderboard();
+}
+function addScore(pts, key){
+    if(key && scoreAwarded[key]) return;
+    if(key) scoreAwarded[key]=true;
+    totalScore+=pts;
+    updateLeaderboard();
+}
+function updateLeaderboard(){
+    const el=document.getElementById('lbTotalScore');
+    el.textContent=totalScore;
+    el.classList.remove('score-pop');
+    void el.offsetWidth;
+    el.classList.add('score-pop');
+}
+
+// ===========================
+// GENERIC TIMER
+// ===========================
+const timers={};
+function startGenericTimer(id,seconds){
+    if(timers[id]) clearInterval(timers[id].interval);
+    const bar=document.getElementById('timer'+id);
+    bar.classList.add('active');
+    const ring=document.getElementById('timerRing'+id);
+    const text=document.getElementById('timerText'+id);
+    const btn=document.getElementById('timerBtn'+id);
+    if(btn) btn.disabled=true;
+    let remaining=seconds;
+    const circ=113.1;
+    function upd(){
+        const p=remaining/seconds;
+        ring.style.strokeDashoffset=circ*(1-p);
+        text.textContent=remaining;
+        ring.classList.remove('warning','danger');
+        text.classList.remove('warning','danger');
+        if(p<=0.25){ring.classList.add('danger');text.classList.add('danger');}
+        else if(p<=0.5){ring.classList.add('warning');text.classList.add('warning');}
+    }
+    upd();
+    timers[id]={
+        interval:setInterval(()=>{
+            remaining--;
+            if(remaining<=0){
+                clearInterval(timers[id].interval);
+                text.textContent='0';
+                ring.style.strokeDashoffset=circ;
+                ring.classList.add('danger');text.classList.add('danger');
+                if(btn) btn.disabled=false;
+                if(timers[id].onEnd) timers[id].onEnd();
+            }
+            upd();
+        },1000),
+        onEnd:null
+    };
+    return timers[id];
+}
+
+// ===========================
+// NAVIGATION
+// ===========================
+function showSection(num){
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+    const sec=document.getElementById('section'+num);
+    sec.classList.add('active'); sec.style.display='block';
+    document.querySelectorAll('.nav-tab')[num-1].classList.add('active');
+}
+
+// ===========================
+// BÖLÜM 1
+// ===========================
+const lightCanvas=document.getElementById('lightCanvas');
+const lightCtx=lightCanvas.getContext('2d');
+let rayCount=12;
+const lightSources=[];
+let obstacles=[], target1=null;
+
+function generateObstacles(){
+    obstacles=[];
+    for(let i=0;i<4;i++){
+        obstacles.push({x:100+Math.random()*500,y:40+Math.random()*320,w:30+Math.random()*50,h:30+Math.random()*50});
+    }
+    target1={x:500+Math.random()*150,y:50+Math.random()*300,r:20};
+}
+function newObstacleRound(){
+    lightSources.length=0;
+    generateObstacles();
+    drawLightScene();
+    const o=document.getElementById('lightObservation');
+    o.className='feedback info show';
+    o.innerHTML='🎯 Engeller ve hedef oluşturuldu! Işık kaynağını doğru yere koyarak yeşil hedefe ulaş!';
+}
+
+function lineRect(x1,y1,x2,y2,rx,ry,rw,rh){
+    function ll(a1,a2,a3,a4,b1,b2,b3,b4){
+        const d=(b4-b2)*(a3-a1)-(b3-b1)*(a4-a2);
+        if(d===0)return false;
+        const ua=((b3-b1)*(a2-b2)-(b4-b2)*(a1-b1))/d;
+        const ub=((a3-a1)*(a2-b2)-(a4-a2)*(a1-b1))/d;
+        return ua>=0&&ua<=1&&ub>=0&&ub<=1;
+    }
+    return ll(x1,y1,x2,y2,rx,ry,rx+rw,ry)||ll(x1,y1,x2,y2,rx+rw,ry,rx+rw,ry+rh)||
+           ll(x1,y1,x2,y2,rx+rw,ry+rh,rx,ry+rh)||ll(x1,y1,x2,y2,rx,ry+rh,rx,ry);
+}
+
+let lightTargetHit=false;
+function drawLightScene(){
+    const W=lightCanvas.width,H=lightCanvas.height;
+    lightCtx.clearRect(0,0,W,H);
+    lightCtx.fillStyle='#111';lightCtx.fillRect(0,0,W,H);
+
+    obstacles.forEach(ob=>{
+        lightCtx.fillStyle='rgba(120,80,50,0.8)';
+        lightCtx.fillRect(ob.x,ob.y,ob.w,ob.h);
+        lightCtx.strokeStyle='rgba(255,255,255,0.3)';lightCtx.lineWidth=1;
+        lightCtx.strokeRect(ob.x,ob.y,ob.w,ob.h);
+        lightCtx.fillStyle='rgba(255,255,255,0.5)';lightCtx.font='10px Nunito';lightCtx.textAlign='center';
+        lightCtx.fillText('Engel',ob.x+ob.w/2,ob.y+ob.h/2+4);
+    });
+
+    if(target1){
+        lightCtx.beginPath();lightCtx.arc(target1.x,target1.y,target1.r,0,Math.PI*2);
+        lightCtx.fillStyle='rgba(56,239,125,0.3)';lightCtx.fill();
+        lightCtx.strokeStyle='#38ef7d';lightCtx.lineWidth=3;lightCtx.stroke();
+        lightCtx.fillStyle='#38ef7d';lightCtx.font='bold 12px Nunito';lightCtx.textAlign='center';
+        lightCtx.fillText('HEDEF',target1.x,target1.y+4);
+    }
+
+    let hitTarget=false;
+    lightSources.forEach(src=>{
+        const grd=lightCtx.createRadialGradient(src.x,src.y,0,src.x,src.y,200);
+        grd.addColorStop(0,'rgba(255,220,50,0.15)');grd.addColorStop(1,'rgba(255,220,50,0)');
+        lightCtx.fillStyle=grd;lightCtx.fillRect(0,0,W,H);
+
+        for(let i=0;i<rayCount;i++){
+            const a=(2*Math.PI/rayCount)*i;
+            const eX=src.x+Math.cos(a)*600,eY=src.y+Math.sin(a)*600;
+            let blocked=false;
+            obstacles.forEach(ob=>{if(lineRect(src.x,src.y,eX,eY,ob.x,ob.y,ob.w,ob.h))blocked=true;});
+
+            if(target1&&!blocked){
+                const dx=target1.x-src.x,dy=target1.y-src.y;
+                const len=Math.sqrt(dx*dx+dy*dy);
+                if(len>0){
+                    const dot=(dx/len)*Math.cos(a)+(dy/len)*Math.sin(a);
+                    if(dot>0.97&&len<600) hitTarget=true;
+                }
+            }
+
+            lightCtx.beginPath();lightCtx.moveTo(src.x,src.y);lightCtx.lineTo(eX,eY);
+            const gr=lightCtx.createLinearGradient(src.x,src.y,eX,eY);
+            if(blocked){
+                gr.addColorStop(0,'rgba(255,100,50,0.7)');gr.addColorStop(0.3,'rgba(255,50,50,0.3)');gr.addColorStop(1,'rgba(255,50,50,0)');
+            }else{
+                gr.addColorStop(0,'rgba(255,230,50,0.9)');gr.addColorStop(0.5,'rgba(255,180,50,0.4)');gr.addColorStop(1,'rgba(255,150,50,0)');
+            }
+            lightCtx.strokeStyle=gr;lightCtx.lineWidth=2;lightCtx.stroke();
+
+            const ad=100;const ax=src.x+Math.cos(a)*ad,ay=src.y+Math.sin(a)*ad;
+            lightCtx.beginPath();
+            lightCtx.moveTo(ax,ay);lightCtx.lineTo(ax-Math.cos(a-0.3)*10,ay-Math.sin(a-0.3)*10);
+            lightCtx.moveTo(ax,ay);lightCtx.lineTo(ax-Math.cos(a+0.3)*10,ay-Math.sin(a+0.3)*10);
+            lightCtx.strokeStyle=blocked?'rgba(255,100,50,0.6)':'rgba(255,230,50,0.8)';
+            lightCtx.lineWidth=2;lightCtx.stroke();
+        }
+
+        lightCtx.beginPath();lightCtx.arc(src.x,src.y,10,0,Math.PI*2);
+        lightCtx.fillStyle='#FFD700';lightCtx.fill();
+        lightCtx.strokeStyle='#fff';lightCtx.lineWidth=2;lightCtx.stroke();
+        lightCtx.font='11px Nunito';lightCtx.fillStyle='#fff';lightCtx.textAlign='center';
+        lightCtx.fillText('Işık Kaynağı',src.x,src.y-16);
+    });
+
+    if(lightSources.length===0&&obstacles.length===0){
+        lightCtx.font='18px Nunito';lightCtx.fillStyle='rgba(255,255,255,0.3)';lightCtx.textAlign='center';
+        lightCtx.fillText('"Yeni Tur" ile başla',W/2,H/2);
+    }
+
+    if(hitTarget&&lightSources.length>0&&!lightTargetHit){
+        lightTargetHit=true;
+        const o=document.getElementById('lightObservation');
+        o.className='feedback success show';
+        o.innerHTML='🎯 HEDEFİ BULDUN! Işık kaynağından çıkan ışınlar <u>doğrusal yolda</u> ilerleyerek hedefe ulaştı! +15 puan!';
+        addScore(15,'light_'+Date.now());
+    }
+}
+
+lightCanvas.addEventListener('click',function(e){
+    const r=lightCanvas.getBoundingClientRect();
+    const x=(e.clientX-r.left)*(lightCanvas.width/r.width);
+    const y=(e.clientY-r.top)*(lightCanvas.height/r.height);
+    lightSources.push({x,y});
+    drawLightScene();
+    if(!target1){
+        const o=document.getElementById('lightObservation');
+        o.className='feedback info show';
+        o.innerHTML='🔍 Işık kaynağından çıkan ışınlar <u>her yöne</u> ve <u>doğrusal</u> olarak yayılıyor!';
+    }
+});
+
+function clearLightCanvas(){ lightSources.length=0; lightTargetHit=false; drawLightScene(); }
+function toggleRayCount(){
+    const c=[8,12,16,24,36]; const i=c.indexOf(rayCount);
+    rayCount=c[(i+1)%c.length];
+    document.getElementById('rayCountLabel').textContent=rayCount;
+    drawLightScene();
+}
+drawLightScene();
+
+// 1.2 Observations
+function saveObservations(){
+    const fb=document.getElementById('obsFeedback');
+    let filled=0;
+    for(let i=1;i<=3;i++){
+        if(document.getElementById('obs'+i+'_src').value.trim()&&document.getElementById('obs'+i+'_note').value.trim()) filled++;
+    }
+    if(filled===0){fb.className='feedback error show';fb.innerHTML='⚠️ Lütfen en az bir gözlem kaydı gir!';}
+    else{fb.className='feedback success show';fb.innerHTML='✅ '+filled+' gözlem kaydedildi! +10 puan';addScore(10,'obs');}
+}
+
+// 1.3 Buzzer
+const buzzerData=[
+    {q:"Işık kaynağından çıkan ışık düz bir çizgi boyunca yayılır.",a:true},
+    {q:"Işık yalnızca tek bir yönde yayılır.",a:false},
+    {q:"Bir el fenerinin ışığı doğrusal yol izler.",a:true},
+    {q:"Işık eğri bir yol izleyerek yayılır.",a:false},
+    {q:"Güneş ışığı her yöne doğrusal olarak yayılır.",a:true},
+];
+let buzzerIdx=-1,buzzerScore=0,buzzerActive=false;
+
+function startBuzzerTimer(){
+    buzzerIdx=-1;buzzerScore=0;buzzerActive=true;
+    document.getElementById('buzzerCurrent').textContent='0';
+    document.getElementById('buzzerCorrect').textContent='0';
+    document.getElementById('buzzerTrue').disabled=false;
+    document.getElementById('buzzerFalse').disabled=false;
+    document.getElementById('buzzerTimerBtn').disabled=true;
+    document.getElementById('timer1_3').classList.add('active');
+    const t=startGenericTimer('1_3',60);
+    t.onEnd=()=>{buzzerActive=false;endBuzzer();};
+    nextBuzzerQ();
+}
+function nextBuzzerQ(){
+    buzzerIdx++;
+    if(buzzerIdx>=buzzerData.length){endBuzzer();return;}
+    document.getElementById('buzzerQ').textContent=buzzerData[buzzerIdx].q;
+    document.getElementById('buzzerCurrent').textContent=buzzerIdx+1;
+    document.getElementById('buzzerTrue').disabled=false;
+    document.getElementById('buzzerFalse').disabled=false;
+    document.getElementById('buzzerTrue').classList.remove('correct-flash','wrong-flash');
+    document.getElementById('buzzerFalse').classList.remove('correct-flash','wrong-flash');
+}
+function buzzerAnswer(val){
+    if(!buzzerActive||buzzerIdx>=buzzerData.length)return;
+    const correct=buzzerData[buzzerIdx].a;
+    const tB=document.getElementById('buzzerTrue'),fB=document.getElementById('buzzerFalse');
+    tB.disabled=true;fB.disabled=true;
+    if(val===correct){buzzerScore++;(val?tB:fB).classList.add('correct-flash');addScore(5,'bz_'+buzzerIdx);}
+    else{(val?tB:fB).classList.add('wrong-flash');(correct?tB:fB).classList.add('correct-flash');}
+    document.getElementById('buzzerCorrect').textContent=buzzerScore;
+    setTimeout(nextBuzzerQ,800);
+}
+function endBuzzer(){
+    buzzerActive=false;
+    document.getElementById('buzzerTrue').disabled=true;
+    document.getElementById('buzzerFalse').disabled=true;
+    document.getElementById('buzzerTimerBtn').disabled=false;
+    if(timers['1_3'])clearInterval(timers['1_3'].interval);
+    const q=document.getElementById('buzzerQ');
+    if(buzzerScore===5) q.innerHTML='🌟 Mükemmel! 5/5 doğru!';
+    else if(buzzerScore>=3) q.innerHTML='👍 Güzel! '+buzzerScore+'/5 doğru!';
+    else q.innerHTML='💪 '+buzzerScore+'/5 doğru. Tekrar dene!';
+}
+
+// ===========================
+// BÖLÜM 2
+// ===========================
+const materials=[
+    {name:"Cam",emoji:"🪟",type:"saydam",info:"Cam saydam bir maddedir. Işığı tamamen geçirir."},
+    {name:"Su",emoji:"💧",type:"saydam",info:"Temiz su saydam bir maddedir."},
+    {name:"Hava",emoji:"🌬️",type:"saydam",info:"Hava saydam bir maddedir."},
+    {name:"Şeffaf Poşet",emoji:"🛍️",type:"saydam",info:"Şeffaf poşet saydam bir maddedir."},
+    {name:"Buzlu Cam",emoji:"🧊",type:"yariSaydam",info:"Buzlu cam yarı saydamdır. Bir kısmını geçirir."},
+    {name:"Yağlı Kâğıt",emoji:"📜",type:"yariSaydam",info:"Yağlı kâğıt yarı saydamdır."},
+    {name:"Tül Perde",emoji:"🪟",type:"yariSaydam",info:"Tül perde yarı saydamdır."},
+    {name:"Sis",emoji:"🌫️",type:"yariSaydam",info:"Sis yarı saydam bir ortamdır."},
+    {name:"Tahta",emoji:"🪵",type:"saydam-degil",info:"Tahta saydam değildir (opak)."},
+    {name:"Demir",emoji:"⚙️",type:"saydam-degil",info:"Demir saydam değildir."},
+    {name:"Karton",emoji:"📦",type:"saydam-degil",info:"Karton saydam değildir."},
+    {name:"Kitap",emoji:"📕",type:"saydam-degil",info:"Kitap saydam değildir."},
+];
+
+function buildMaterialExplorer(){
+    const c=document.getElementById('materialExplorer');c.innerHTML='';
+    materials.forEach(m=>{
+        const d=document.createElement('div');
+        d.style.cssText='width:140px;padding:20px 15px;background:rgba(255,255,255,0.08);border-radius:16px;text-align:center;cursor:pointer;transition:all 0.3s;border:2px solid transparent;';
+        d.innerHTML=`<div style="font-size:2.5rem;">${m.emoji}</div><div style="font-weight:700;margin-top:8px;">${m.name}</div>`;
+        d.addEventListener('click',()=>{
+            const info=document.getElementById('materialInfo');
+            const colors={saydam:'#38ef7d',yariSaydam:'#f9d423','saydam-degil':'#eb3349'};
+            const labels={saydam:'Saydam',yariSaydam:'Yarı Saydam','saydam-degil':'Saydam Değil (Opak)'};
+            info.style.display='block';info.className='feedback info show';
+            info.innerHTML=`<strong>${m.emoji} ${m.name}</strong> → <span style="color:${colors[m.type]};font-weight:800;">${labels[m.type]}</span><br>${m.info}`;
+            d.style.borderColor=colors[m.type];
+            setTimeout(()=>d.style.borderColor='transparent',2000);
+        });
+        d.addEventListener('mouseenter',()=>{d.style.transform='translateY(-5px)';d.style.background='rgba(255,255,255,0.15)';});
+        d.addEventListener('mouseleave',()=>{d.style.transform='translateY(0)';d.style.background='rgba(255,255,255,0.08)';});
+        c.appendChild(d);
+    });
+}
+buildMaterialExplorer();
+
+// DD
+function buildDragDrop(){
+    const pool=document.getElementById('sourcePool2');pool.innerHTML='';
+    const sh=[...materials].sort(()=>Math.random()-0.5);
+    sh.forEach(m=>{
+        const it=document.createElement('div');it.className='dd-item';it.draggable=true;
+        it.dataset.type=m.type;it.dataset.name=m.name;
+        it.textContent=m.emoji+' '+m.name;
+        it.style.background='rgba(255,255,255,0.15)';it.style.color='#fff';
+        it.addEventListener('dragstart',e=>{
+            e.dataTransfer.setData('text/plain',JSON.stringify({name:m.name,type:m.type,emoji:m.emoji}));
+            it.style.opacity='0.5';
+        });
+        it.addEventListener('dragend',()=>it.style.opacity='1');
+        pool.appendChild(it);
+    });
+    ['zone-saydam','zone-yariSaydam','zone-saydam-degil'].forEach(z=>{
+        const el=document.getElementById(z);const h=el.querySelector('h4');el.innerHTML='';el.appendChild(h);
+    });
+}
+function allowDrop(e){e.preventDefault();}
+function enterZone(e){e.currentTarget.classList.add('over');}
+function leaveZone(e){e.currentTarget.classList.remove('over');}
+function dropItem(e,zt){
+    e.preventDefault();e.currentTarget.classList.remove('over');
+    const d=JSON.parse(e.dataTransfer.getData('text/plain'));
+    document.getElementById('sourcePool2').querySelectorAll('.dd-item').forEach(i=>{if(i.dataset.name===d.name)i.remove();});
+    const ch=document.createElement('div');ch.className='dd-item';
+    ch.textContent=d.emoji+' '+d.name;ch.dataset.type=d.type;ch.dataset.name=d.name;
+    ch.style.background='rgba(255,255,255,0.2)';ch.style.color='#fff';ch.style.cursor='default';
+    e.currentTarget.appendChild(ch);
+}
+function checkClassification(){
+    let sc=0,tot=0;
+    ['zone-saydam','zone-yariSaydam','zone-saydam-degil'].forEach(z=>{
+        const el=document.getElementById(z);const zt=z.replace('zone-','');
+        el.querySelectorAll('.dd-item').forEach(i=>{
+            tot++;
+            if(i.dataset.type===zt){sc++;i.classList.add('correct');}else{i.classList.add('wrong');}
+        });
+    });
+    document.getElementById('classScore').style.display='inline-flex';
+    document.getElementById('classScoreVal').textContent=sc;
+    const fb=document.getElementById('classFeedback');
+    if(tot===0){fb.className='feedback error show';fb.innerHTML='⚠️ Henüz hiçbir madde sınıflandırmadın!';}
+    else if(sc===tot&&tot===12){fb.className='feedback success show';fb.innerHTML='🌟 Muhteşem! Tüm maddeleri doğru sınıflandırdın!';addScore(20,'class');}
+    else{fb.className=sc>=tot*0.7?'feedback info show':'feedback error show';fb.innerHTML=sc>=tot*0.7?`👍 ${sc}/${tot} doğru.`:`💪 ${sc}/${tot} doğru. Tekrar dene!`;addScore(sc*2,'class');}
+}
+function resetClassification(){
+    scoreAwarded['class']=false;
+    buildDragDrop();
+    document.getElementById('classScore').style.display='none';
+    document.getElementById('classFeedback').className='feedback';
+}
+buildDragDrop();
+
+// Fast Label
+const flItems=[
+    {name:"Cam Bardak",emoji:"🥃",type:"saydam"},{name:"Ahşap Kapı",emoji:"🚪",type:"saydam-degil"},
+    {name:"Tül Perde",emoji:"🪟",type:"yariSaydam"},{name:"Temiz Su",emoji:"💧",type:"saydam"},
+    {name:"Alüminyum Folyo",emoji:"🔲",type:"saydam-degil"},{name:"Buzlu Cam",emoji:"🧊",type:"yariSaydam"},
+    {name:"Hava",emoji:"🌬️",type:"saydam"},{name:"Tuğla Duvar",emoji:"🧱",type:"saydam-degil"},
+    {name:"Pet Şişe",emoji:"🧴",type:"saydam"},{name:"Karton Kutu",emoji:"📦",type:"saydam-degil"},
+    {name:"Yağlı Kâğıt",emoji:"📜",type:"yariSaydam"},{name:"Sis",emoji:"🌫️",type:"yariSaydam"},
+];
+let flIdx=-1,flScore=0,flActive=false,flShuffled=[];
+
+function startFastLabel(){
+    flIdx=-1;flScore=0;flActive=true;
+    flShuffled=[...flItems].sort(()=>Math.random()-0.5);
+    document.getElementById('flTotal').textContent=flShuffled.length;
+    document.getElementById('flCurrent').textContent='0';
+    document.getElementById('flCorrect').textContent='0';
+    document.getElementById('fastLabelStartBtn').disabled=true;
+    document.getElementById('timer2_3').classList.add('active');
+    const t=startGenericTimer('2_3',45);
+    t.onEnd=()=>{flActive=false;endFastLabel();};
+    nextFL();
+}
+function nextFL(){
+    flIdx++;
+    if(flIdx>=flShuffled.length){endFastLabel();return;}
+    const it=flShuffled[flIdx];
+    document.getElementById('fastLabelItem').innerHTML=`<span style="font-size:3rem;">${it.emoji}</span> ${it.name}`;
+    document.getElementById('flCurrent').textContent=flIdx+1;
+    document.getElementById('flBtnSaydam').disabled=false;
+    document.getElementById('flBtnYari').disabled=false;
+    document.getElementById('flBtnOpak').disabled=false;
+}
+function fastLabelPick(type){
+    if(!flActive||flIdx>=flShuffled.length)return;
+    const correct=flShuffled[flIdx].type;
+    document.getElementById('flBtnSaydam').disabled=true;
+    document.getElementById('flBtnYari').disabled=true;
+    document.getElementById('flBtnOpak').disabled=true;
+    const el=document.getElementById('fastLabelItem');
+    if(type===correct){flScore++;addScore(3,'fl_'+flIdx);el.innerHTML+=' ✅';}
+    else{el.innerHTML+=' ❌';}
+    document.getElementById('flCorrect').textContent=flScore;
+    setTimeout(nextFL,600);
+}
+function endFastLabel(){
+    flActive=false;
+    ['flBtnSaydam','flBtnYari','flBtnOpak'].forEach(id=>document.getElementById(id).disabled=true);
+    document.getElementById('fastLabelStartBtn').disabled=false;
+    if(timers['2_3'])clearInterval(timers['2_3'].interval);
+    const el=document.getElementById('fastLabelItem');
+    if(flScore>=10) el.innerHTML=`🌟 Harika! ${flScore}/${flShuffled.length} doğru!`;
+    else if(flScore>=7) el.innerHTML=`👍 Güzel! ${flScore}/${flShuffled.length} doğru!`;
+    else el.innerHTML=`💪 ${flScore}/${flShuffled.length} doğru. Tekrar dene!`;
+}
+
+// ===========================
+// BÖLÜM 3
+// ===========================
+const shadowCanvas=document.getElementById('shadowCanvas');
+const shadowCtx=shadowCanvas.getContext('2d');
+let shadowTargetVal=null;
+
+function syncFromSlider(name){
+    document.getElementById(name+'Input').value=document.getElementById(name).value;
+    updateShadow();
+}
+function syncFromInput(name){
+    const inp=document.getElementById(name+'Input');
+    const sl=document.getElementById(name);
+    let v=parseFloat(inp.value);
+    if(isNaN(v))return;
+    v=Math.max(parseFloat(sl.min),Math.min(parseFloat(sl.max),v));
+    sl.value=v;
+    updateShadow();
+}
+
+function updateShadow(){
+    const objSize=parseFloat(document.getElementById('objSize').value);
+    const lightDist=parseFloat(document.getElementById('lightDist').value);
+    const screenDist=parseFloat(document.getElementById('screenDist').value);
+    const scale=10; // 1cm = 10px
+    const W=shadowCanvas.width,H=shadowCanvas.height,midY=H/2;
+
+    const lightX=80;
+    const objX=lightX+lightDist*scale;
+    const screenX=Math.min(objX+screenDist*scale, W-10);
+    const objSizePx=objSize*scale;
+    const shadowCm=objSize*(lightDist+screenDist)/lightDist;
+    const shadowPx=shadowCm*scale;
+
+    shadowCtx.clearRect(0,0,W,H);
+    shadowCtx.fillStyle='#111';shadowCtx.fillRect(0,0,W,H);
+
+    // Light cone
+    const halfSh=Math.min(shadowPx/2,H/2-20);
+    shadowCtx.globalAlpha=0.15;
+    shadowCtx.beginPath();shadowCtx.moveTo(lightX,midY);
+    shadowCtx.lineTo(screenX,midY-halfSh);shadowCtx.lineTo(screenX,midY+halfSh);
+    shadowCtx.closePath();shadowCtx.fillStyle='#FFD700';shadowCtx.fill();
+    shadowCtx.globalAlpha=1;
+
+    // Rays
+    shadowCtx.setLineDash([5,5]);shadowCtx.strokeStyle='rgba(255,230,50,0.6)';shadowCtx.lineWidth=1.5;
+    shadowCtx.beginPath();shadowCtx.moveTo(lightX,midY);shadowCtx.lineTo(objX,midY-objSizePx/2);shadowCtx.lineTo(screenX,midY-halfSh);shadowCtx.stroke();
+    shadowCtx.beginPath();shadowCtx.moveTo(lightX,midY);shadowCtx.lineTo(objX,midY+objSizePx/2);shadowCtx.lineTo(screenX,midY+halfSh);shadowCtx.stroke();
+    shadowCtx.setLineDash([]);
+
+    // Screen
+    shadowCtx.fillStyle='rgba(200,200,200,0.3)';shadowCtx.fillRect(screenX-3,midY-160,6,320);
+    shadowCtx.font='12px Nunito';shadowCtx.fillStyle='#aaa';shadowCtx.textAlign='center';
+    shadowCtx.fillText('Perde',screenX,midY-165);
+
+    // Shadow
+    shadowCtx.fillStyle='rgba(0,0,0,0.9)';shadowCtx.fillRect(screenX-3,midY-halfSh,6,halfSh*2);
+
+    // Object
+    shadowCtx.fillStyle='#5a67d8';shadowCtx.fillRect(objX-8,midY-objSizePx/2,16,objSizePx);
+    shadowCtx.strokeStyle='#fff';shadowCtx.lineWidth=1;shadowCtx.strokeRect(objX-8,midY-objSizePx/2,16,objSizePx);
+    shadowCtx.fillStyle='#c5c3ff';shadowCtx.textAlign='center';
+    shadowCtx.fillText('Cisim',objX,midY-objSizePx/2-10);
+
+    // Light source
+    shadowCtx.beginPath();shadowCtx.arc(lightX,midY,14,0,Math.PI*2);
+    shadowCtx.fillStyle='#FFD700';shadowCtx.fill();
+    shadowCtx.strokeStyle='#FFF';shadowCtx.lineWidth=2;shadowCtx.stroke();
+    const lgrd=shadowCtx.createRadialGradient(lightX,midY,0,lightX,midY,80);
+    lgrd.addColorStop(0,'rgba(255,220,50,0.3)');lgrd.addColorStop(1,'rgba(255,220,50,0)');
+    shadowCtx.fillStyle=lgrd;shadowCtx.fillRect(0,0,W,H);
+    shadowCtx.fillStyle='#fff';shadowCtx.font='11px Nunito';shadowCtx.textAlign='center';
+    shadowCtx.fillText('💡 Işık',lightX,midY+30);
+
+    // Labels
+    const rounded=Math.round(shadowCm*10)/10;
+    shadowCtx.fillStyle='#38ef7d';shadowCtx.font='bold 13px Nunito';
+    shadowCtx.fillText('Gölge: '+rounded+' cm',screenX,midY+halfSh+25);
+
+    shadowCtx.fillStyle='#f9d423';shadowCtx.font='11px Nunito';
+    shadowCtx.fillText(lightDist+' cm',(lightX+objX)/2,midY+65);
+    shadowCtx.beginPath();shadowCtx.moveTo(lightX,midY+55);shadowCtx.lineTo(objX,midY+55);
+    shadowCtx.strokeStyle='#f9d423';shadowCtx.lineWidth=1;shadowCtx.stroke();
+
+    shadowCtx.fillStyle='#667eea';
+    shadowCtx.fillText(screenDist+' cm',(objX+screenX)/2,midY+85);
+    shadowCtx.beginPath();shadowCtx.moveTo(objX,midY+75);shadowCtx.lineTo(screenX,midY+75);
+    shadowCtx.strokeStyle='#667eea';shadowCtx.lineWidth=1;shadowCtx.stroke();
+
+    // Info
+    document.getElementById('shadowInfo').innerHTML=
+        '🔍 Cisim = '+objSize+' cm | Işık uzaklığı = '+lightDist+' cm | Perde uzaklığı = '+screenDist+' cm → <strong style="color:#38ef7d;">Gölge ≈ '+rounded+' cm</strong>';
+
+    // Target
+    document.getElementById('currentShadowVal').textContent=rounded;
+    const line=document.getElementById('currentShadowLine');
+    if(shadowTargetVal!==null){
+        if(Math.abs(rounded-shadowTargetVal)<=0.5){line.classList.add('target-match');}
+        else{line.classList.remove('target-match');}
+    }
+}
+
+function newShadowTarget(){
+    const rO=3+Math.random()*15;
+    const rL=8+Math.random()*35;
+    const rS=6+Math.random()*20;
+    const t=Math.round((rO*(rL+rS)/rL)*10)/10;
+    shadowTargetVal=t;
+    document.getElementById('targetShadowVal').textContent=t+' cm';
+    document.getElementById('currentShadowLine').classList.remove('target-match');
+    if(window._shCheck) clearInterval(window._shCheck);
+    window._shCheck=setInterval(()=>{
+        const cur=parseFloat(document.getElementById('currentShadowVal').textContent);
+        if(Math.abs(cur-shadowTargetVal)<=0.5){
+            clearInterval(window._shCheck);
+            document.getElementById('currentShadowLine').classList.add('target-match');
+            addScore(20,'shadow_'+shadowTargetVal);
+            const info=document.getElementById('shadowInfo');
+            info.className='feedback success show';
+            info.innerHTML='🎯 HEDEFİ BULDUN! Gölge boyutu hedefle eşleşti! +20 puan!';
+        }
+    },500);
+    updateShadow();
+}
+updateShadow();
+
+// 3.2 Auto-fill
+let shFill=0;
+function autoFillShadow(){
+    shFill++;if(shFill>3) shFill=1;
+    const p='sh'+shFill;
+    const o=parseFloat(document.getElementById('objSize').value);
+    const l=parseFloat(document.getElementById('lightDist').value);
+    const s=parseFloat(document.getElementById('screenDist').value);
+    const sh=Math.round(o*(l+s)/l*10)/10;
+    document.getElementById(p+'_obj').value=o;
+    document.getElementById(p+'_light').value=l;
+    document.getElementById(p+'_screen').value=s;
+    document.getElementById(p+'_shadow').value=sh;
+    document.getElementById('shadowObsFeedback').className='feedback info show';
+    document.getElementById('shadowObsFeedback').innerHTML='📥 Deney '+shFill+' dolduruldu!';
+}
+function saveShadowObs(){
+    document.getElementById('shadowObsFeedback').className='feedback success show';
+    document.getElementById('shadowObsFeedback').innerHTML='✅ Veriler kaydedildi! +10 puan';
+    addScore(10,'shObs');
+}
+
+// 3.3 Scenarios
+const scenarioData=[
+    {scenario:"Bir deneyde ışık kaynağını cisme yaklaştırdığınızda perdedeki gölge büyüdü.",
+     q:"Bu durumda bağımsız değişken nedir?",
+     options:["Gölge boyutu","Işık kaynağının uzaklığı","Cismin boyutu","Perdenin rengi"],answer:1},
+    {scenario:"Aynı ışık kaynağı ve perde uzaklığıyla, farklı boyutlardaki cisimlerin gölgeleri ölçüldü.",
+     q:"Bu deneyde bağımlı değişken hangisidir?",
+     options:["Cismin boyutu","Işık kaynağının türü","Gölge boyutu","Perdenin uzaklığı"],answer:2},
+    {scenario:"Cisim boyutu büyütüldüğünde perdedeki gölgenin de büyüdüğü gözlemlendi.",
+     q:"Bu sonuç ne anlama gelir?",
+     options:["Işık eğri yayılır","Cisim büyüdükçe gölge de büyür","Gölge cisimden küçüktür","Işık kaynağı önemsizdir"],answer:1},
+    {scenario:"Bir deneyde hem ışık uzaklığı hem cisim boyutu sabit tutulup, perde cisme yaklaştırıldı. Gölge küçüldü.",
+     q:"Kontrol edilen (sabit tutulan) değişkenler hangileridir?",
+     options:["Perde uzaklığı ve gölge boyutu","Işık uzaklığı ve cisim boyutu","Gölge boyutu ve ışık türü","Cisim şekli ve perde rengi"],answer:1},
+    {scenario:"Tam gölge oluşabilmesi için ışık kaynağı, cisim ve perde doğru konumlandırılmalıdır.",
+     q:"Tam gölge oluşması için cisim nasıl bir madde olmalıdır?",
+     options:["Saydam","Yarı saydam","Saydam olmayan (opak)","Farketmez"],answer:2},
+];
+
+function buildScenarios(){
+    const c=document.getElementById('scenarioContainer');c.innerHTML='';
+    scenarioData.forEach((item,i)=>{
+        const card=document.createElement('div');card.className='scenario-card';
+        let h=`<div class="scenario-q">📖 <em>"${item.scenario}"</em></div>`;
+        h+=`<p style="font-weight:700;margin-bottom:10px;">${i+1}. ${item.q}</p><div class="scenario-options">`;
+        item.options.forEach((o,j)=>{h+=`<button class="scenario-opt" id="sc_${i}_${j}" onclick="selectSc(${i},${j},this)">${o}</button>`;});
+        h+='</div>';card.innerHTML=h;c.appendChild(card);
+    });
+}
+const scAnswers={};
+function selectSc(qi,oi,el){
+    scAnswers[qi]=oi;
+    scenarioData[qi].options.forEach((_,j)=>document.getElementById('sc_'+qi+'_'+j).classList.remove('selected'));
+    el.classList.add('selected');
+}
+function checkScenarios(){
+    let sc=0;
+    scenarioData.forEach((item,i)=>{
+        item.options.forEach((_,j)=>document.getElementById('sc_'+i+'_'+j).classList.remove('correct-answer','wrong-answer'));
+        if(scAnswers[i]!==undefined){
+            if(scAnswers[i]===item.answer){sc++;document.getElementById('sc_'+i+'_'+item.answer).classList.add('correct-answer');}
+            else{document.getElementById('sc_'+i+'_'+scAnswers[i]).classList.add('wrong-answer');document.getElementById('sc_'+i+'_'+item.answer).classList.add('correct-answer');}
+        }
+    });
+    document.getElementById('scenarioScore').style.display='inline-flex';
+    document.getElementById('scenarioScoreVal').textContent=sc;
+    addScore(sc*5,'scenarios');
+    const fb=document.getElementById('scenarioFeedback');
+    if(sc===5){fb.className='feedback success show';fb.innerHTML='🌟 Harika! Değişkenleri mükemmel biliyorsun!';}
+    else if(sc>=3){fb.className='feedback info show';fb.innerHTML=`👍 İyi! ${sc}/5 doğru.`;}
+    else{fb.className='feedback error show';fb.innerHTML=`💪 ${sc}/5 doğru. Senaryoları simülasyonla karşılaştır!`;}
+}
+function resetScenarios(){
+    scoreAwarded['scenarios']=false;
+    Object.keys(scAnswers).forEach(k=>delete scAnswers[k]);
+    buildScenarios();
+    document.getElementById('scenarioScore').style.display='none';
+    document.getElementById('scenarioFeedback').className='feedback';
+}
+buildScenarios();
+
+// Checklist
+function toggleCheck(li){li.classList.toggle('checked');updateCLP();}
+function updateCLP(){
+    const items=document.querySelectorAll('#checklist3 li');
+    const checked=document.querySelectorAll('#checklist3 li.checked');
+    const pct=Math.round((checked.length/items.length)*100);
+    document.getElementById('checklistProgress').style.width=pct+'%';
+    document.getElementById('checklistPercent').textContent=pct+'% Tamamlandı';
+    if(pct===100) addScore(10,'checklist');
+}
+</script>
+</body>
+</html>

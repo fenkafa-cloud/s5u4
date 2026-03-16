@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Öğretmen Paneli — Işık Ünitesi</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Nunito',sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:#fff;min-height:100vh;overflow-x:hidden}
+
+/* ── Screens ── */
+.screen{display:none;animation:fadeIn .4s}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Create Screen ── */
+#createScreen.active{display:flex;align-items:center;justify-content:center;height:100vh}
+.create-box{text-align:center}
+.create-box h1{font-size:3rem;background:linear-gradient(90deg,#f9d423,#ff4e50);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:12px}
+.create-box p{color:#b8b5ff;font-size:1.2rem;margin-bottom:30px}
+.big-btn{padding:20px 50px;border:none;border-radius:60px;font-family:'Nunito';font-size:1.3rem;font-weight:800;color:#fff;cursor:pointer;transition:all .3s}
+.big-btn:hover{transform:scale(1.06);box-shadow:0 10px 35px rgba(0,0,0,.3)}
+.btn-green{background:linear-gradient(135deg,#38ef7d,#11998e)}
+.btn-orange{background:linear-gradient(135deg,#f9d423,#f83600)}
+.btn-purple{background:linear-gradient(135deg,#667eea,#764ba2)}
+.btn-red{background:linear-gradient(135deg,#eb3349,#f45c43)}
+.btn-sm{padding:10px 22px;font-size:.9rem;border:none;border-radius:50px;font-family:'Nunito';font-weight:700;color:#fff;cursor:pointer;transition:all .3s}
+.btn-sm:hover{transform:scale(1.05)}
+
+/* ── Top Bar ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(0,0,0,.4);backdrop-filter:blur(15px);border-bottom:1px solid rgba(255,255,255,.1);position:sticky;top:0;z-index:100}
+.topbar .title{font-size:1.1rem;font-weight:800}
+.pin-badge{background:linear-gradient(135deg,#f9d423,#f83600);padding:8px 22px;border-radius:50px;font-size:1.3rem;font-weight:800;letter-spacing:4px}
+.team-count{background:rgba(255,255,255,.1);padding:8px 18px;border-radius:50px;font-weight:700}
+
+/* ── Layout ── */
+.main-layout{display:flex;min-height:calc(100vh - 60px)}
+.sidebar{width:280px;flex-shrink:0;background:rgba(0,0,0,.3);padding:16px;border-right:1px solid rgba(255,255,255,.08);overflow-y:auto;max-height:calc(100vh - 60px)}
+.content{flex:1;padding:24px;overflow-y:auto;max-height:calc(100vh - 60px)}
+
+/* ── Activity Buttons ── */
+.act-section-title{font-size:.75rem;color:#888;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;padding-left:4px}
+.act-btn{display:block;width:100%;padding:12px 16px;margin-bottom:8px;border:2px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.05);color:#fff;font-family:'Nunito';font-size:.9rem;font-weight:700;cursor:pointer;transition:all .3s;text-align:left}
+.act-btn:hover{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.1)}
+.act-btn.active{border-color:#38ef7d;background:rgba(56,239,125,.15)}
+.act-btn .act-icon{margin-right:8px}
+
+/* ── Leaderboard ── */
+.lb-title{font-size:.85rem;color:#b8b5ff;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.lb-team{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;margin:4px 0;border-radius:10px;background:rgba(255,255,255,.06);transition:all .3s;font-weight:700;font-size:.95rem}
+.lb-team:first-child{background:rgba(249,212,35,.15);border:1px solid rgba(249,212,35,.3)}
+.lb-score{font-weight:800;color:#f9d423;min-width:40px;text-align:right}
+.lb-rank{color:#888;font-size:.8rem;margin-right:8px;min-width:20px}
+.lb-empty{text-align:center;color:#666;padding:30px;font-size:.9rem}
+
+/* ── Content Cards ── */
+.card{background:rgba(255,255,255,.07);border-radius:20px;padding:28px;margin-bottom:20px;border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(10px)}
+.card h2{font-size:1.4rem;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.card p.sub{color:#b8b5ff;margin-bottom:18px;line-height:1.5}
+
+/* ── Vote Bars ── */
+.vote-bars{margin:20px 0}
+.vote-bar{display:flex;align-items:center;gap:12px;margin:10px 0}
+.vote-label{min-width:160px;font-weight:700;font-size:.95rem}
+.vote-track{flex:1;height:36px;background:rgba(255,255,255,.08);border-radius:18px;overflow:hidden;position:relative}
+.vote-fill{height:100%;border-radius:18px;transition:width .5s ease;display:flex;align-items:center;padding-left:14px;font-weight:800;font-size:.9rem;min-width:0}
+.vote-fill.a{background:linear-gradient(90deg,#eb3349,#f45c43)}
+.vote-fill.b{background:linear-gradient(90deg,#667eea,#764ba2)}
+.vote-fill.c{background:linear-gradient(90deg,#38ef7d,#11998e)}
+.vote-fill.d{background:linear-gradient(90deg,#f9d423,#f83600)}
+.vote-count{min-width:50px;text-align:right;font-weight:800;font-size:1.1rem}
+
+/* ── Question Display ── */
+.question-display{font-size:1.5rem;font-weight:800;text-align:center;padding:30px;background:rgba(255,255,255,.05);border-radius:16px;margin:20px 0;line-height:1.5}
+.option-display{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin:20px 0}
+.option-chip{padding:14px 28px;border-radius:50px;font-weight:700;font-size:1.05rem;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05)}
+.option-chip.correct{border-color:#38ef7d;background:rgba(56,239,125,.2);color:#38ef7d}
+.option-chip.wrong{border-color:#eb3349;background:rgba(235,51,73,.15);opacity:.5}
+
+/* ── Observation Pool ── */
+.obs-pool{width:100%;border-collapse:collapse;margin:15px 0}
+.obs-pool th,.obs-pool td{padding:12px 16px;border:1px solid rgba(255,255,255,.15);text-align:center}
+.obs-pool th{background:rgba(255,255,255,.1);font-weight:700;font-size:.85rem}
+.obs-pool td{font-size:.9rem}
+.obs-pool tr:nth-child(even) td{background:rgba(255,255,255,.03)}
+
+/* ── Shadow Canvas ── */
+canvas{border-radius:16px;display:block;margin:0 auto;max-width:100%}
+
+/* ── Chart ── */
+.chart-wrapper{background:rgba(255,255,255,.05);border-radius:16px;padding:20px;margin:15px 0}
+
+/* ── Winners ── */
+.winner-banner{text-align:center;padding:30px;animation:fadeIn .5s}
+.winner-banner h2{font-size:2rem;background:linear-gradient(90deg,#f9d423,#ff4e50);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.winner-name{font-size:1.8rem;font-weight:800;margin:8px 0;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+
+/* ── Materials ── */
+.material-big{font-size:4rem;text-align:center;margin:20px 0}
+.material-name{font-size:2rem;font-weight:800;text-align:center;margin:10px 0}
+
+/* ── Timer ── */
+.timer-display{text-align:center;margin:15px 0}
+.timer-num{font-size:4rem;font-weight:800;font-variant-numeric:tabular-nums}
+.timer-num.warn{color:#f9d423}
+.timer-num.danger{color:#eb3349}
+
+/* ── Waiting ── */
+.waiting-area{text-align:center;padding:60px 20px}
+.waiting-area h2{font-size:1.8rem;margin-bottom:12px;color:#b8b5ff}
+.waiting-area .pin-huge{font-size:5rem;font-weight:800;letter-spacing:12px;background:linear-gradient(90deg,#f9d423,#ff4e50);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:20px 0}
+.waiting-area p{color:#888;font-size:1.1rem}
+
+/* ── Buttons Row ── */
+.btn-row{display:flex;gap:12px;flex-wrap:wrap;margin:15px 0;justify-content:center}
+
+/* ── Attempts List ── */
+.attempts-list{max-height:300px;overflow-y:auto;margin:15px 0}
+.attempt-item{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;margin:4px 0;border-radius:10px;background:rgba(255,255,255,.05);font-weight:700}
+.attempt-item.match{background:rgba(56,239,125,.15);border:1px solid rgba(56,239,125,.3)}
+.attempt-val{color:#b8b5ff;font-size:.9rem}
+
+/* ── Responsive ── */
+@media(max-width:900px){.sidebar{width:220px}.content{padding:16px}}
+@media(max-width:700px){.main-layout{flex-direction:column}.sidebar{width:100%;max-height:none;border-right:none;border-bottom:1px solid rgba(255,255,255,.08)}}
+
+/* Stars */
+.stars{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-1;overflow:hidden}
+.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle 3s infinite alternate}
+@keyframes twinkle{0%{opacity:.3}100%{opacity:1}}
+</style>
+</head>
+<body>
+<div class="stars" id="starsC"></div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 1: CREATE ROOM
+     ═══════════════════════════════════════ -->
+<div class="screen active" id="createScreen">
+  <div class="create-box">
+    <h1>🔦 Işık Ünitesi</h1>
+    <p>5. Sınıf Fen Bilimleri • Öğretmen Paneli</p>
+    <button class="big-btn btn-green" onclick="createRoom()">🚀 Oda Oluştur</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 2: LOBBY + ACTIVITY
+     ═══════════════════════════════════════ -->
+<div class="screen" id="lobbyScreen">
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="title">🔦 Öğretmen Paneli</div>
+    <div class="pin-badge" id="pinDisplay">----</div>
+    <div class="team-count">👥 <span id="teamCount">0</span> takım</div>
+  </div>
+
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="act-section-title">Bölüm 1: Işığın Yayılması</div>
+      <button class="act-btn" data-id="1.1" onclick="launchActivity('1.1')"><span class="act-icon">🔬</span>1.1 Simülasyon Oylaması</button>
+      <button class="act-btn" data-id="1.2" onclick="launchActivity('1.2')"><span class="act-icon">📝</span>1.2 Gözlem Havuzu</button>
+      <button class="act-btn" data-id="1.3" onclick="launchActivity('1.3')"><span class="act-icon">🧠</span>1.3 Neden Soruları</button>
+
+      <div class="act-section-title">Bölüm 2: Madde ve Işık</div>
+      <button class="act-btn" data-id="2.2" onclick="launchActivity('2.2')"><span class="act-icon">⚔️</span>2.2 Takım Savaşı</button>
+      <button class="act-btn" data-id="2.3" onclick="launchActivity('2.3')"><span class="act-icon">⚡</span>2.3 Kahoot Etiketleme</button>
+
+      <div class="act-section-title">Bölüm 3: Tam Gölge</div>
+      <button class="act-btn" data-id="3.1" onclick="launchActivity('3.1')"><span class="act-icon">🎯</span>3.1 Hedef Gölge Yarışı</button>
+      <button class="act-btn" data-id="3.2" onclick="launchActivity('3.2')"><span class="act-icon">📊</span>3.2 Ortak Grafik</button>
+      <button class="act-btn" data-id="3.3" onclick="launchActivity('3.3')"><span class="act-icon">🔬</span>3.3 Değişken Oylaması</button>
+
+      <div class="act-section-title" style="margin-top:24px">🏆 Puan Tablosu</div>
+      <div id="leaderboard"><div class="lb-empty">Henüz takım yok</div></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content" id="mainContent">
+      <div class="waiting-area" id="waitingArea">
+        <h2>Öğrencilerin katılmasını bekleyin</h2>
+        <div class="pin-huge" id="pinHuge">----</div>
+        <p>Öğrenciler <strong>student.html</strong> sayfasında bu PIN'i girecek</p>
+      </div>
+
+      <!-- Activity content injected here -->
+      <div id="activityContent" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   DATA: Questions & Materials
+   ═══════════════════════════════════════════ */
+
+const Q_1_1 = [
+  { q:"Işık kaynağı sol tarafta, hedefe ulaşabilmesi için hangi yolu izler?",
+    options:["A) Eğri çizerek engellerin etrafından dolanır","B) Doğrusal yol izleyerek engelden geçer","C) Rastgele yönlerde saçılır","D) Yalnızca yukarı doğru yayılır"], correct:1 },
+  { q:"Karanlık bir odada el feneri açıldığında duvardan yansıyan ışık demeti neden düz bir çizgi şeklindedir?",
+    options:["A) Duvar düz olduğu için","B) El feneri özel yapıldığı için","C) Işık doğrusal yol izlediği için","D) Oda karanlık olduğu için"], correct:2 },
+  { q:"Güneş tutulması sırasında Ay'ın gölgesi neden Dünya üzerinde belirli bir bölgede oluşur?",
+    options:["A) Ay çok büyük olduğu için","B) Dünya döndüğü için","C) Işık doğrusal yayıldığından Ay belirli bir bölgenin ışığını engeller","D) Güneş küçüldüğü için"], correct:2 },
+];
+const Q_1_3 = [
+  { q:"Lazer ışığının havada dümdüz bir çizgi halinde görünmesinin sebebi nedir?",
+    options:["A) Lazer çok güçlüdür","B) Işık doğrusal yolda yayılır","C) Hava lazeri düzleştirir","D) Lazer özel bir ışıktır"], correct:1 },
+  { q:"Karanlık odada el feneri yaktığımızda ışık demetinin düz çizgi oluşturmasının nedeni?",
+    options:["A) Oda karanlık olduğu için","B) El feneri dairesel olduğu için","C) Işık kaynağından çıkan ışık doğrusal yol izler","D) Toz parçacıkları düzleştirir"], correct:2 },
+  { q:"Neden duvardaki küçük bir delikten geçen güneş ışığı yer üzerinde dairesel bir leke oluşturur?",
+    options:["A) Delik dairesel olduğu için","B) Güneş ışığı doğrusal yayılarak delikten geçer","C) Duvar ışığı büker","D) Yer düz olduğu için"], correct:1 },
+  { q:"Işık engele çarptığında arkasında gölge oluşmasının nedeni nedir?",
+    options:["A) Işık engeli deler","B) Engel ışığı soğurur","C) Işık doğrusal yayıldığı için engelin arkasına ulaşamaz","D) Gölge her zaman vardır"], correct:2 },
+];
+const MATERIALS = [
+  {name:"Cam Bardak",emoji:"🥃",type:"saydam"},
+  {name:"Temiz Su",emoji:"💧",type:"saydam"},
+  {name:"Hava",emoji:"🌬️",type:"saydam"},
+  {name:"Şeffaf Poşet",emoji:"🛍️",type:"saydam"},
+  {name:"Buzlu Cam",emoji:"🧊",type:"yariSaydam"},
+  {name:"Yağlı Kâğıt",emoji:"📜",type:"yariSaydam"},
+  {name:"Tül Perde",emoji:"🪟",type:"yariSaydam"},
+  {name:"Sis",emoji:"🌫️",type:"yariSaydam"},
+  {name:"Tahta",emoji:"🪵",type:"opak"},
+  {name:"Demir",emoji:"⚙️",type:"opak"},
+  {name:"Karton Kutu",emoji:"📦",type:"opak"},
+  {name:"Tuğla Duvar",emoji:"🧱",type:"opak"},
+];
+const TYPE_LABELS = {saydam:"🟢 Saydam",yariSaydam:"🟡 Yarı Saydam",opak:"🔴 Saydam Değil"};
+const TYPE_COLORS = {saydam:"#38ef7d",yariSaydam:"#f9d423",opak:"#eb3349"};
+const TYPE_TO_OPTION_INDEX = { saydam: 0, yariSaydam: 1, opak: 2 };
+
+const QUIZ_2_3 = MATERIALS.map((m) => ({
+  material: m,
+  question: `${m.emoji} ${m.name} için en doğru ifade hangisidir?`,
+  options: [
+    'A) Bu madde saydamdır.',
+    'B) Bu madde yarı saydamdır.',
+    'C) Bu madde saydam değildir (opak).',
+    'D) Bu madde bir ışık kaynağıdır.'
+  ],
+  correct: TYPE_TO_OPTION_INDEX[m.type]
+}));
+
+const SCENARIOS = [
+  { scenario:"Bir deneyde ışık kaynağını cisme yaklaştırdığınızda perdedeki gölge büyüdü.",
+    q:"Bu durumda bağımsız değişken nedir?", correct:"bagimsiz",
+    explain:"Işık kaynağının uzaklığı değiştirildiği için bağımsız değişkendir." },
+  { scenario:"Aynı ışık kaynağı ve perde uzaklığıyla, farklı boyutlardaki cisimlerin gölgeleri ölçüldü.",
+    q:"Bu deneyde bağımlı değişken hangisidir?", correct:"bagimli",
+    explain:"Gölge boyutu, cisim boyutuna bağlı olarak değişen bağımlı değişkendir." },
+  { scenario:"Cisim boyutu ve perde uzaklığı sabit tutulup, ışık kaynağı uzaklaştırıldı. Gölge küçüldü.",
+    q:"Kontrol edilen (sabit tutulan) değişkenler hangileridir?", correct:"kontrol",
+    explain:"Cisim boyutu ve perde uzaklığı sabittir, yani kontrol edilen değişkenlerdir." },
+  { scenario:"Perde cisme yaklaştırıldığında gölge küçüldü, uzaklaştırıldığında büyüdü.",
+    q:"Bağımsız değişken nedir?", correct:"bagimsiz",
+    explain:"Perde uzaklığı bilinçli olarak değiştirilen değişken — bağımsız değişkendir." },
+  { scenario:"Aynı cisim ve ışık uzaklığıyla, perde uzaklığı değiştirilerek gölge boyutu ölçüldü.",
+    q:"Bağımlı değişken nedir?", correct:"bagimli",
+    explain:"Gölge boyutu — perde uzaklığına bağlı olarak değişiyor." },
+];
+
+/* ═══════════════════════════════════════════
+   SOCKET.IO
+   ═══════════════════════════════════════════ */
+const socket = io();
+let teams = [];
+let currentActivity = null;
+let currentQIndex = 0;
+let currentMatIndex = 0;
+let shuffledMats = [];
+let shuffledQuiz2_3 = [];
+let adminTimer = null;
+let lineChart = null;
+let barChart = null;
+let roundScored = false;
+let latestAnswers = {};
+
+socket.on('room-created', ({ pin }) => {
+  document.getElementById('pinDisplay').textContent = pin;
+  document.getElementById('pinHuge').textContent = pin;
+  showScreen('lobbyScreen');
+});
+
+socket.on('student-joined', ({ teams: t }) => {
+  teams = t;
+  renderLeaderboard();
+  document.getElementById('teamCount').textContent = teams.length;
+});
+socket.on('student-left', ({ teams: t }) => {
+  teams = t;
+  renderLeaderboard();
+  document.getElementById('teamCount').textContent = teams.length;
+});
+socket.on('scores-updated', ({ teams: t }) => {
+  teams = t;
+  renderLeaderboard();
+});
+
+/* Answer handling */
+socket.on('answer-received', ({ teamName, answer, allAnswers, totalTeams }) => {
+  handleAnswer(teamName, answer, allAnswers, totalTeams);
+});
+socket.on('data-received', ({ point, allData }) => {
+  handleDataPoint(point, allData);
+});
+socket.on('shadow-attempt', ({ teamName, shadowSize, objSize, lightDist, screenDist }) => {
+  handleShadowAttempt(teamName, shadowSize, objSize, lightDist, screenDist);
+});
+
+/* ═══════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function createRoom() { socket.emit('create-room'); }
+function renderLeaderboard() {
+  const lb = document.getElementById('leaderboard');
+  if (!teams.length) { lb.innerHTML = '<div class="lb-empty">Henüz takım yok</div>'; return; }
+  lb.innerHTML = teams.map((t, i) =>
+    `<div class="lb-team"><span><span class="lb-rank">#${i+1}</span>${t.teamName}</span><span class="lb-score">${t.score}</span></div>`
+  ).join('');
+}
+
+/* ═══════════════════════════════════════════
+   ACTIVITY LAUNCHER
+   ═══════════════════════════════════════════ */
+function launchActivity(id) {
+  if (currentActivity) socket.emit('end-activity');
+  currentActivity = id;
+  currentQIndex = 0;
+  currentMatIndex = 0;
+  document.querySelectorAll('.act-btn').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+
+  const area = document.getElementById('activityContent');
+  const wait = document.getElementById('waitingArea');
+  wait.style.display = 'none';
+  area.style.display = 'block';
+
+  socket.emit('reset-activity-state');
+  latestAnswers = {};
+  roundScored = false;
+
+  switch(id) {
+    case '1.1': render_1_1(); break;
+    case '1.2': render_1_2(); break;
+    case '1.3': render_1_3(); break;
+    case '2.2': render_2_2(); break;
+    case '2.3': render_2_3(); break;
+    case '3.1': render_3_1(); break;
+    case '3.2': render_3_2(); break;
+    case '3.3': render_3_3(); break;
+  }
+}
+
+function endCurrentActivity() {
+  socket.emit('end-activity');
+  currentActivity = null;
+  latestAnswers = {};
+  roundScored = false;
+  stopTimer();
+  document.querySelectorAll('.act-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('activityContent').style.display = 'none';
+  document.getElementById('waitingArea').style.display = 'block';
+}
+
+/* ═══════════════════════════════════════════
+   GENERIC VOTE BARS
+   ═══════════════════════════════════════════ */
+function renderVoteBars(containerId, options, allAnswers) {
+  const counts = {};
+  options.forEach((_, i) => counts[i] = 0);
+  Object.values(allAnswers || {}).forEach(a => { if (counts[a.choice] !== undefined) counts[a.choice]++; });
+  const total = Object.values(counts).reduce((s, v) => s + v, 0) || 1;
+  const classes = ['a','b','c','d'];
+  const el = document.getElementById(containerId);
+  el.innerHTML = options.map((opt, i) => `
+    <div class="vote-bar">
+      <div class="vote-label">${opt}</div>
+      <div class="vote-track"><div class="vote-fill ${classes[i]}" style="width:${(counts[i]/total*100)}%">${counts[i]>0?counts[i]:''}</div></div>
+      <div class="vote-count">${counts[i]}</div>
+    </div>`).join('');
+}
+
+function renderThreeVoteBars(containerId, allAnswers) {
+  const keys = ['bagimli','bagimsiz','kontrol'];
+  const labels = {bagimli:'🔵 Bağımlı Değişken', bagimsiz:'🟠 Bağımsız Değişken', kontrol:'🟢 Kontrol Edilen'};
+  const cls = {bagimli:'b', bagimsiz:'a', kontrol:'c'};
+  const counts = {bagimli:0, bagimsiz:0, kontrol:0};
+  Object.values(allAnswers || {}).forEach(a => { if (counts[a.choice] !== undefined) counts[a.choice]++; });
+  const total = Object.values(counts).reduce((s,v)=>s+v,0)||1;
+  document.getElementById(containerId).innerHTML = keys.map(k => `
+    <div class="vote-bar">
+      <div class="vote-label">${labels[k]}</div>
+      <div class="vote-track"><div class="vote-fill ${cls[k]}" style="width:${(counts[k]/total*100)}%">${counts[k]>0?counts[k]:''}</div></div>
+      <div class="vote-count">${counts[k]}</div>
+    </div>`).join('');
+}
+
+function renderClassifyBars(containerId, allAnswers) {
+  const types = ['saydam','yariSaydam','opak'];
+  const cls = {saydam:'c', yariSaydam:'d', opak:'a'};
+  const counts = {saydam:0, yariSaydam:0, opak:0};
+  Object.values(allAnswers || {}).forEach(a => { if (counts[a.choice] !== undefined) counts[a.choice]++; });
+  const total = Object.values(counts).reduce((s,v)=>s+v,0)||1;
+  document.getElementById(containerId).innerHTML = types.map(k => `
+    <div class="vote-bar">
+      <div class="vote-label">${TYPE_LABELS[k]}</div>
+      <div class="vote-track"><div class="vote-fill ${cls[k]}" style="width:${(counts[k]/total*100)}%">${counts[k]>0?counts[k]:''}</div></div>
+      <div class="vote-count">${counts[k]}</div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════
+   TIMER
+   ═══════════════════════════════════════════ */
+function startTimer(seconds, displayId, onEnd) {
+  stopTimer();
+  let rem = seconds;
+  const el = document.getElementById(displayId);
+  function upd() {
+    el.textContent = rem;
+    el.className = 'timer-num' + (rem <= 5 ? ' danger' : rem <= 15 ? ' warn' : '');
+  }
+  upd();
+  adminTimer = setInterval(() => {
+    rem--;
+    if (rem <= 0) { stopTimer(); el.textContent = '0'; el.className = 'timer-num danger'; if (onEnd) onEnd(); return; }
+    upd();
+  }, 1000);
+}
+function stopTimer() { if (adminTimer) { clearInterval(adminTimer); adminTimer = null; } }
+
+/* ═══════════════════════════════════════════
+   1.1 – Simülasyon Oylaması
+   ═══════════════════════════════════════════ */
+function render_1_1() {
+  const q = Q_1_1[currentQIndex] || Q_1_1[0];
+  const area = document.getElementById('activityContent');
+  area.innerHTML = `
+    <div class="card">
+      <h2>🔬 Etkinlik 1.1 – Simülasyon Oylaması</h2>
+      <p class="sub">Öğrenciler ışığın yolunu tahmin ediyor. Sonuçları gösterip simülasyonu çalıştırın.</p>
+      <div class="question-display">${q.q}</div>
+      <canvas id="simCanvas1_1" width="700" height="260" style="background:#111;margin-bottom:14px"></canvas>
+      <div class="option-display" id="optionsDisplay1_1">${q.options.map((o,i)=>`<div class="option-chip" id="opt1_1_${i}">${o}</div>`).join('')}</div>
+      <div class="timer-display"><span class="timer-num" id="timer1_1">30</span></div>
+      <div class="vote-bars" id="votes1_1"></div>
+      <div class="btn-row">
+        <button class="btn-sm btn-green" onclick="start_1_1()">▶️ Başlat</button>
+        <button class="btn-sm btn-purple" onclick="prev_1_1()">⬅️ Önceki Soru</button>
+        <button class="btn-sm btn-purple" onclick="reveal_1_1()">👁️ Cevabı Göster</button>
+        <button class="btn-sm btn-orange" onclick="next_1_1()">➡️ Sonraki Soru</button>
+        <button class="btn-sm btn-red" onclick="endCurrentActivity()">⏹️ Bitir</button>
+      </div>
+    </div>`;
+  drawLinearLightSimulation(currentQIndex);
+}
+function start_1_1() {
+  const q = Q_1_1[currentQIndex];
+  latestAnswers = {};
+  socket.emit('start-activity', { id: '1.1', question: q.q, options: q.options, qIndex: currentQIndex });
+  startTimer(30, 'timer1_1');
+  drawLinearLightSimulation(currentQIndex);
+}
+function reveal_1_1() {
+  stopTimer();
+  const q = Q_1_1[currentQIndex];
+  socket.emit('reveal-answer', { correct: q.correct });
+  q.options.forEach((_, i) => {
+    const el = document.getElementById('opt1_1_'+i);
+    if (el) el.classList.add(i === q.correct ? 'correct' : 'wrong');
+  });
+  // Award points
+  const answers = collectAnswers();
+  const winners = Object.entries(answers).filter(([_, a]) => a.choice === q.correct).map(([t]) => t);
+  if (winners.length) socket.emit('bulk-scores', winners.map(t => ({ teamName: t, delta: 10 })));
+}
+function next_1_1() {
+  currentQIndex = (currentQIndex + 1) % Q_1_1.length;
+  socket.emit('reset-activity-state');
+  latestAnswers = {};
+  render_1_1();
+  start_1_1();
+}
+function prev_1_1() {
+  currentQIndex = (currentQIndex - 1 + Q_1_1.length) % Q_1_1.length;
+  socket.emit('reset-activity-state');
+  latestAnswers = {};
+  render_1_1();
+  start_1_1();
+}
+
+function drawLinearLightSimulation(index) {
+  const c = document.getElementById('simCanvas1_1');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const sourceX = 70;
+  const targetX = W - 70;
+  const lanes = [H * 0.3, H * 0.5, H * 0.7];
+  const lane = lanes[index % lanes.length];
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = 'rgba(255,255,255,.08)';
+  for (let x = 0; x <= W; x += 50) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+
+  ctx.beginPath();
+  ctx.arc(sourceX, lane, 14, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFD700';
+  ctx.fill();
+  ctx.font = '12px Nunito';
+  ctx.fillStyle = '#c5c3ff';
+  ctx.fillText('Kaynak', sourceX - 22, lane + 30);
+
+  const obsX = W * 0.45;
+  ctx.fillStyle = '#5a67d8';
+  ctx.fillRect(obsX, lane - 45, 20, 90);
+
+  ctx.fillStyle = '#38ef7d';
+  ctx.fillRect(targetX - 8, lane - 25, 16, 50);
+  ctx.fillStyle = '#c5c3ff';
+  ctx.fillText('Hedef', targetX - 20, lane + 42);
+
+  ctx.strokeStyle = 'rgba(255,215,0,.9)';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([10, 8]);
+  ctx.beginPath();
+  ctx.moveTo(sourceX + 14, lane);
+  ctx.lineTo(targetX - 10, lane);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = 'rgba(0,0,0,.6)';
+  ctx.fillRect(obsX + 20, lane - 40, targetX - obsX - 20, 80);
+
+  ctx.fillStyle = '#f9d423';
+  ctx.font = 'bold 14px Nunito';
+  ctx.fillText('Işık doğrusal yayılır.', W / 2 - 75, 24);
+}
+
+/* ═══════════════════════════════════════════
+   1.2 – Gözlem Havuzu
+   ═══════════════════════════════════════════ */
+function render_1_2() {
+  const area = document.getElementById('activityContent');
+  area.innerHTML = `
+    <div class="card">
+      <h2>📝 Etkinlik 1.2 – Sınıfın Gözlem Havuzu</h2>
+      <p class="sub">Öğrenciler gözlemlerini gönderiyor. Veriler aşağıdaki tabloya düşecek.</p>
+      <div class="btn-row">
+        <button class="btn-sm btn-green" onclick="start_1_2()">▶️ Gözlem Toplamayı Başlat</button>
+        <button class="btn-sm btn-red" onclick="endCurrentActivity()">⏹️ Bitir</button>
+      </div>
+      <table class="obs-pool">
+        <thead><tr><th>Takım</th><th>Işık Kaynağı</th><th>Yayılma Şekli</th><th>Not</th></tr></thead>
+        <tbody id="obsBody"></tbody>
+      </table>
+      <div id="obsCount" style="text-align:center;color:#888;margin-top:10px">0 gözlem geldi</div>
+    </div>`;
+}
+function start_1_2() {
+  socket.emit('start-activity', { id: '1.2' });
+}
+
+/* ═══════════════════════════════════════════
+   1.3 – Neden Soruları
+   ═══════════════════════════════════════════ */
+function render_1_3() {
+  const q = Q_1_3[currentQIndex] || Q_1_3[0];
+  const area = document.getElementById('activityContent');
+  area.innerHTML = `
+    <div class="card">
+      <h2>🧠 Etkinlik 1.3 – Neden Soruları</h2>
+      <p class="sub">Öğrenciler cevaplarını telefonlarından gönderiyor.</p>
+      <div class="question-display">${q.q}</div>
+      <div class="option-display" id="optionsDisplay1_3">${q.options.map((o,i)=>`<div class="option-chip" id="opt1_3_${i}">${o}</div>`).join('')}</div>
+      <div class="timer-display"><span class="timer-num" id="timer1_3">30</span></div>
+      <div class="vote-bars" id="votes1_3"></div>
+      <div class="btn-row">
+        <button class="btn-sm btn-green" onclick="start_1_3()">▶️ Başlat</button>
+        <button class="btn-sm btn-purple" onclick="prev_1_3()">⬅️ Önceki Soru</button>
+        <button class="btn-sm btn-purple" onclick="reveal_1_3()">👁️ Cevabı Göster</button>
+        <button class="btn-sm btn-orange" onclick="next_1_3()">➡️ Sonraki Soru</button>
+        <button class="btn-sm btn-red" onclick="endCurrentActivity()">⏹️ Bitir</button>
+      </div>
+    </div>`;
+}
+function start_1_3() {
+  const q = Q_1_3[currentQIndex];
+  latestAnswers = {};
+  socket.emit('start-activity', { id: '1.3', question: q.q, options: q.options, qIndex: currentQIndex });
+  startTimer(30, 'timer1_3');
+}
+function reveal_1_3() {
+  stopTimer();
+  const q = Q_1_3[currentQIndex];
+  socket.emit('reveal-answer', { correct: q.correct });
+  q.options.forEach((_, i) => {
+    const el = document.getElementById('opt1_3_'+i);
+    if (el) el.classList.add(i === q.correct ? 'correct' : 'wrong');
+  });
+  const answers = collectAnswers();
+  const winners = Object.entries(answers).filter(([_, a]) => a.choice === q.correct).map(([t]) => t);
+  if (winners.length) socket.emit('bulk-scores', winners.map(t => ({ teamName: t, delta: 10 })));
+}
+function next_1_3() {
+  currentQIndex = (currentQIndex + 1) % Q_1_3.length;
+  socket.emit('reset-activity-state');
+  latestAnswers = {};
+  render_1_3();
+  start_1_3();
+}
+function prev_1_3() {
+  currentQIndex = (currentQIndex - 1 + Q_1_3.length) % Q_1_3.length;
+  socket.emit('reset-activity-state');
+  latestAnswers = {};
+  render_1_3();
+  start_1_3();
+}
+
+/* ═══════════════════════════════════════════
+   2.2 – Takım Savaşı
+   ═══════════════════════════════════════════ */
+function render_2_2() {
+  shuffledMats = [...MATERIALS].sort(() => Math.random() - .5);
+  currentMatIndex = 0;
+  const area = document.getElementById('activityContent');
+  area.innerHTML = `
+    <div class="card">
+      <h2>⚔️ Etkinlik 2.2 – Takım Savaşı</h2>
+      <p class="sub">Öğrenci ekranlarına maddeler düşüyor. Doğru kovaya sınıflandırsınlar!</p>
+      <div class="material-big" id="matEmoji2_2">${shuffledMats[0]?.emoji||'?'}</div>
+      <div class="material-name" id="matName2_2">${shuffledMats[0]?.name||'--'}</div>
+      <div style="text-align:center;color:#888;margin:8px 0"><span id="matCounter2_2">1</span> / ${shuffledMats.length}</div>
+      <div class="timer-display"><span class="timer-num" id="timer2_2">10</span></div>
+      <div class="vote-bars" id="votes2_2"></div>
+      <div class="btn-row">
+        <button class="btn-sm btn-green" onclick="start_2_2()">▶️ Başlat</button>
+        <button class="btn-sm btn-purple" onclick="prev_2_2()">⬅️ Önceki Madde</button>
+        <button class="btn-sm btn-orange" onclick="next_2_2()">➡️ Sonraki Madde</button>
+        <button class="btn-sm btn-red" onclick="endCurrentActivity()">⏹️ Bitir</button>
+      </div>
+    </div>`;
+}
+function start_2_2() {
+  currentMatIndex = 0;
+  sendMat_2_2();
+}
+function sendMat_2_2() {
+  const m = shuffledMats[currentMatIndex];
+  if (!m) return;
+  roundScored = false;
+  latestAnswers = {};
+  socket.emit('start-activity', { id: '2.2', material: m, matIndex: currentMatIndex, total: shuffledMats.length });
+  socket.emit('reset-activity-state');
+  document.getElementById('matEmoji2_2').textContent = m.emoji;
+  document.getElementById('matName2_2').textContent = m.name;
+  document.getElementById('matCounter2_2').textContent = currentMatIndex + 1;
+  startTimer(10, 'timer2_2', () => { autoScore_2_2(); next_2_2(); });
+}
+function next_2_2() {
+  stopTimer();
+  autoScore_2_2();
+  currentMatIndex++;
+  if (currentMatIndex >= shuffledMats.length) {
+    document.getElementById('matEmoji2_2').textContent = '🏆';
+    document.getElementById('matName2_2').textContent = 'Tüm maddeler bitti!';
+    return;
+  }
+  sendMat_2_2();
+}
+function prev_2_2() {
+  stopTimer();
+  currentMatIndex = (currentMatIndex - 1 + shuffledMats.length) % shuffledMats.length;
+  sendMat_2_2();
+}
+function autoScore_2_2() {
+  if (roundScored) return;
+  roundScored = true;
+  const m = shuffledMats[currentMatIndex];
+  if (!m) return;
+  const answers = collectAnswers();
+  const winners = Object.entries(answers).filter(([_, a]) => a.choice === m.type).map(([t]) => t);
+  if (winners.length) socket.emit('bulk-scores', winners.map(t => ({ teamName: t, delta: 5 })));
+  socket.emit('reveal-answer', { mode: 'classify', correct: m.type, correctLabel: TYPE_LABELS[m.type] || m.type });
+}
+
+/* ═══════════════════════════════════════════
+   2.3 – Kahoot Çoktan Seçmeli
+   ═══════════════════════════════════════════ */
+function render_2_3() {
+  shuffledQuiz2_3 = [...QUIZ_2_3].sort(() => Math.random() - .5);
+  currentQIndex = 0;
+  const area = document.getElementById('activityContent');
+  area.innerHTML = `
+    <div class="card">
+      <h2>⚡ Etkinlik 2.3 – Kahoot Çoktan Seçmeli</h2>
+      <p class="sub">Etiketleme yerine çoktan seçmeli formatta hızlı cevap yarışı.</p>
+      <div class="question-display" id="question2_3">${shuffledQuiz2_3[0]?.question||'--'}</div>
+      <div class="option-display" id="optionsDisplay2_3">${(shuffledQuiz2_3[0]?.options||[]).map((o,i)=>`<div class="option-chip" id="opt2_3_${i}">${o}</div>`).join('')}</div>
+      <div style="text-align:center;color:#888;margin:8px 0"><span id="qCounter2_3">1</span> / ${shuffledQuiz2_3.length}</div>
+      <div class="timer-display"><span class="timer-num" id="timer2_3">10</span></div>
+      <div class="vote-bars" id="votes2_3"></div>
+      <div class="btn-row">
+        <button class="btn-sm btn-green" onclick="start_2_3()">▶️ Başlat</button>
+        <button class="btn-sm btn-purple" onclick="prev_2_3()">⬅️ Önceki Soru</button>
+        <button class="btn-sm btn-orange" onclick="next_2_3()">➡️ Sonraki</button>
+        <button class="btn-sm btn-red" onclick="endCurrentActivity()">⏹️ Bitir</button>
+      </div>
+    </div>`;
+}
+function start_2_3() {
+  currentQIndex = 0;
+  sendQ_2_3();
+}
+function sendQ_2_3() {
+  const q = shuffledQuiz2_3[currentQIndex];
+  if (!q) return;
+  roundScored = false;
+  latestAnswers = {};
+  socket.emit('start-activity', { id: '2.3', question: q.question, options: q.options, qIndex: currentQIndex, total: shuffledQuiz2_3.length });
+  socket.emit('reset-activity-state');
+  document.getElementById('question2_3').textContent = q.question;
+  document.getElementById('optionsDisplay2_3').innerHTML = q.options.map((o,i)=>`<div class="option-chip" id="opt2_3_${i}">${o}</div>`).join('');
+  document.getElementById('qCounter2_3').textContent = currentQIndex + 1;
+  startTimer(10, 'timer2_3', () => { autoScore_2_3(); next_2_3(); });
+}
+function next_2_3() {
+  stopTimer();
+  autoScore_2_3();
+  currentQIndex++;
+  if (currentQIndex >= shuffledQuiz2_3.length) {
+    document.getElementById('question2_3').textContent = '🏆 Tüm sorular tamamlandı!';
+    document.getElementById('optionsDisplay2_3').innerHTML = '';
+    return;
+  }
+  sendQ_2_3();
+}
+function prev_2_3() {
+  stopTimer();
+  currentQIndex = (currentQIndex - 1 + shuffledQuiz2_3.length) % shuffledQuiz2_3.length;
+  sendQ_2_3();
+}
+function autoScore_2_3() {
+  if (roundScored) return;
+  roundScored = true;
+  const q = shuffledQuiz2_3[currentQIndex];
+  if (!q) return;
+  const answers = collectAnswers();
+  // Speed-based scoring: earlier answers get more points
+  const sorted = Object.entries(answers)
+    .filter(([_, a]) => a.choice === q.correct)
+    .sort((a, b) => (a[1].time || 999) - (b[1].time || 999));
+  const updates = sorted.map(([t], i) => ({ teamName: t, delta: Math.max(5, 15 - i * 3) }));
+  if (updates.length) socket.emit('bulk-scores', updates);
+  socket.emit('reveal-answer', { correct: q.correct });
+  q.options.forEach((_, i) => {
+    const el = document.getElementById('opt2_3_' + i);
+    if (el) el.classList.add(i === q.correct ? 'correct' : 'wrong');
+  });
+}
+
+/* ═══════════════════════════════════════════
+   3.1 – Hedef Gölge Yarışı
+   ═══════════════════════════════════════════ */
+let shadowTarget = null;
+let shadowWinners = [];
+function render_3_1() {
+  shadowTarget = null;
+  shadowWinners = [];
+  const area = document.getElementById('activityContent');
+  area.innerHTML = `
+    <div class="card">
+      <h2>🎯 Etkinlik 3.1 – Hedef Gölge Yarışı</h2>
+      <p class="sub">Hedef gölge boyutunu belirleyin. Öğrenciler sürgülerle doğru oranı bulmaya çalışacak!</p>
+      <div style="text-align:center;margin:20px 0">
+        <label style="font-weight:700;font-size:1.1rem">Hedef Gölge Boyutu (cm):
+          <input type="number" id="targetInput" value="15" min="3" max="60" step="0.5"
+                 style="width:100px;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-family:Nunito;font-size:1.2rem;font-weight:800;text-align:center;margin-left:10px">
+        </label>
+        <span style="font-size:1rem;color:#888;margin-left:8px">cm</span>
+      </div>
+      <canvas id="shadowCanvas" width="700" height="350" style="background:#111"></canvas>
+      <div class="timer-display"><span class="timer-num" id="timer3_1">60</span></div>
+      <h3 style="margin:15px 0 8px">🏆 Gelen Denemeler</h3>
+      <div class="attempts-list" id="attemptsList"></div>
+      <div id="winnersArea"></div>
+      <div class="btn-row">
+        <button class="btn-sm btn-green" onclick="start_3_1()">▶️ Yarışı Başlat</button>
+        <button class="btn-sm btn-red" onclick="endCurrentActivity()">⏹️ Bitir</button>
+      </div>
+    </div>`;
+  drawShadowDemo(6, 20, 15);
+}
+function start_3_1() {
+  shadowTarget = parseFloat(document.getElementById('targetInput').value) || 15;
+  shadowWinners = [];
+  document.getElementById('attemptsList').innerHTML = '';
+  document.getElementById('winnersArea').innerHTML = '';
+  socket.emit('start-activity', { id: '3.1' });
+  socket.emit('set-shadow-target', { target: shadowTarget });
+  startTimer(60, 'timer3_1', () => {
+    socket.emit('end-activity');
+    if (shadowWinners.length) announceWinners();
+  });
+}
+function handleShadowAttempt(teamName, shadowSize, objSize, lightDist, screenDist) {
+  if (!shadowTarget) return;
+  const diff = Math.abs(shadowSize - shadowTarget);
+  const match = diff <= 0.5;
+  const list = document.getElementById('attemptsList');
+  const el = document.createElement('div');
+  el.className = 'attempt-item' + (match ? ' match' : '');
+  el.innerHTML = `<span>${match?'🎯':'📐'} ${teamName}</span><span class="attempt-val">Gölge: ${shadowSize} cm (Fark: ${diff.toFixed(1)} cm)</span>`;
+  list.prepend(el);
+
+  if (match && !shadowWinners.includes(teamName)) {
+    shadowWinners.push(teamName);
+    const pts = shadowWinners.length === 1 ? 25 : shadowWinners.length === 2 ? 15 : 10;
+    socket.emit('update-score', { teamName, delta: pts });
+    socket.emit('announce-winners', { winners: [...shadowWinners] });
+    drawShadowDemo(objSize, lightDist, screenDist);
+
+    const wa = document.getElementById('winnersArea');
+    wa.innerHTML = shadowWinners.map((w, i) =>
+      `<div class="winner-banner"><h2>${i===0?'🥇':i===1?'🥈':'🥉'} ${i+1}. Sıra</h2><div class="winner-name">${w}</div></div>`
+    ).join('');
+  }
+}
+function announceWinners() {
+  socket.emit('announce-winners', { winners: shadowWinners, final: true });
+}
+
+/* Shadow Drawing */
+function drawShadowDemo(objSize, lightDist, screenDist) {
+  const c = document.getElementById('shadowCanvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height, midY = H / 2, scale = 8;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H);
+
+  const lx = 60, ox = lx + lightDist * scale, sx = Math.min(ox + screenDist * scale, W - 10);
+  const oPx = objSize * scale;
+  const shCm = objSize * (lightDist + screenDist) / lightDist;
+  const shPx = Math.min(shCm * scale, H - 40);
+
+  ctx.globalAlpha = .12;
+  ctx.beginPath(); ctx.moveTo(lx, midY); ctx.lineTo(sx, midY - shPx/2); ctx.lineTo(sx, midY + shPx/2); ctx.closePath();
+  ctx.fillStyle = '#FFD700'; ctx.fill(); ctx.globalAlpha = 1;
+
+  ctx.setLineDash([5,5]); ctx.strokeStyle='rgba(255,230,50,.5)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(lx,midY); ctx.lineTo(ox,midY-oPx/2); ctx.lineTo(sx,midY-shPx/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lx,midY); ctx.lineTo(ox,midY+oPx/2); ctx.lineTo(sx,midY+shPx/2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle='rgba(200,200,200,.25)'; ctx.fillRect(sx-3,midY-160,6,320);
+  ctx.fillStyle='rgba(0,0,0,.9)'; ctx.fillRect(sx-3,midY-shPx/2,6,shPx);
+  ctx.fillStyle='#5a67d8'; ctx.fillRect(ox-8,midY-oPx/2,16,oPx);
+  ctx.beginPath(); ctx.arc(lx,midY,12,0,Math.PI*2); ctx.fillStyle='#FFD700'; ctx.fill();
+
+  ctx.fillStyle='#38ef7d'; ctx.font='bold 14px Nunito'; ctx.textAlign='center';
+  ctx.fillText('Gölge: ' + (Math.round(shCm*10)/10) + ' cm', sx, midY+shPx/2+22);
+  ctx.fillStyle='#c5c3ff'; ctx.font='12px Nunito';
+  ctx.fillText('Cisim '+objSize+' cm', ox, midY-oPx/2-12);
+  ctx.fillText('💡', lx, midY+28);
+
+  if (shadowTarget) {
+    ctx.fillStyle='#f9d423'; ctx.font='bold 16px Nunito';
+    ctx.fillText('🎯 Hedef: ' + shadowTarget + ' cm', W/2, 28);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   3.2 – Ortak Grafik
+   ═══════════════════════════════════════════ */
+function render_3_2() {
+  const area = document.getElementById('activityContent');
+  area.innerHTML = `
+    <div class="card">
+      <h2>📊 Etkinlik 3.2 – Ortak Çizgi Grafiği</h2>
+      <p class="sub">Öğrenciler cihazlarından veri girsin. "Işık kaynağı yaklaştıkça gölge nasıl değişir?" sorusunun cevabı ortaya çıkacak!</p>
+      <div class="btn-row">
+        <button class="btn-sm btn-green" onclick="start_3_2()">▶️ Veri Toplamayı Başlat</button>
+        <button class="btn-sm btn-red" onclick="endCurrentActivity()">⏹️ Bitir</button>
+      </div>
+      <div class="chart-wrapper"><canvas id="lineChartCanvas"></canvas></div>
+      <div id="dataCount" style="text-align:center;color:#888;margin-top:10px">0 veri noktası geldi</div>
+    </div>`;
+  initLineChart();
+}
+function start_3_2() {
+  socket.emit('start-activity', { id: '3.2' });
+}
+function initLineChart() {
+  const ctx = document.getElementById('lineChartCanvas');
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets: [] },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#fff' } }, title: { display: true, text: 'Işık Uzaklığı – Gölge Boyutu', color: '#f9d423', font: { size: 16, family: 'Nunito' } } },
+      scales: {
+        x: { title: { display: true, text: 'Işık Uzaklığı (cm)', color: '#b8b5ff' }, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,.08)' } },
+        y: { title: { display: true, text: 'Gölge Boyutu (cm)', color: '#b8b5ff' }, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,.08)' } }
+      }
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════
+   3.3 – Değişken Oylaması
+   ═══════════════════════════════════════════ */
+function render_3_3() {
+  currentQIndex = 0;
+  const s = SCENARIOS[0];
+  const area = document.getElementById('activityContent');
+  area.innerHTML = `
+    <div class="card">
+      <h2>🔬 Etkinlik 3.3 – Değişken Oylaması</h2>
+      <p class="sub">Senaryoyu tahtadan okuyun. Öğrenciler değişken türünü oylasın.</p>
+      <div style="background:rgba(106,17,203,.15);border:2px solid rgba(106,17,203,.4);border-radius:16px;padding:24px;margin:15px 0">
+        <div style="font-size:1.2rem;font-style:italic;margin-bottom:12px;line-height:1.6" id="scenarioText3_3">"${s.scenario}"</div>
+        <div style="font-size:1.3rem;font-weight:800" id="scenarioQ3_3">${s.q}</div>
+      </div>
+      <div style="text-align:center;color:#888;margin:8px 0">Senaryo <span id="scenarioIdx">1</span> / ${SCENARIOS.length}</div>
+      <div class="timer-display"><span class="timer-num" id="timer3_3">20</span></div>
+      <div class="vote-bars" id="votes3_3"></div>
+      <div id="explain3_3" style="display:none;text-align:center;padding:15px;background:rgba(56,239,125,.1);border-radius:12px;margin:10px 0;font-weight:700"></div>
+      <div class="btn-row">
+        <button class="btn-sm btn-green" onclick="start_3_3()">▶️ Başlat</button>
+        <button class="btn-sm btn-purple" onclick="prev_3_3()">⬅️ Önceki Senaryo</button>
+        <button class="btn-sm btn-purple" onclick="reveal_3_3()">👁️ Cevabı Göster</button>
+        <button class="btn-sm btn-orange" onclick="next_3_3()">➡️ Sonraki Senaryo</button>
+        <button class="btn-sm btn-red" onclick="endCurrentActivity()">⏹️ Bitir</button>
+      </div>
+    </div>`;
+}
+function start_3_3() {
+  const s = SCENARIOS[currentQIndex];
+  latestAnswers = {};
+  socket.emit('start-activity', { id: '3.3', scenario: s.scenario, question: s.q, sIndex: currentQIndex });
+  startTimer(20, 'timer3_3');
+}
+function reveal_3_3() {
+  stopTimer();
+  const s = SCENARIOS[currentQIndex];
+  socket.emit('reveal-answer', { correct: s.correct });
+  const el = document.getElementById('explain3_3');
+  el.style.display = 'block';
+  el.textContent = '✅ ' + s.explain;
+  const answers = collectAnswers();
+  const winners = Object.entries(answers).filter(([_, a]) => a.choice === s.correct).map(([t]) => t);
+  if (winners.length) socket.emit('bulk-scores', winners.map(t => ({ teamName: t, delta: 10 })));
+}
+function next_3_3() {
+  currentQIndex = (currentQIndex + 1) % SCENARIOS.length;
+  socket.emit('reset-activity-state');
+  latestAnswers = {};
+  const s = SCENARIOS[currentQIndex];
+  document.getElementById('scenarioText3_3').textContent = '"' + s.scenario + '"';
+  document.getElementById('scenarioQ3_3').textContent = s.q;
+  document.getElementById('scenarioIdx').textContent = currentQIndex + 1;
+  document.getElementById('explain3_3').style.display = 'none';
+  document.getElementById('votes3_3').innerHTML = '';
+  start_3_3();
+}
+function prev_3_3() {
+  currentQIndex = (currentQIndex - 1 + SCENARIOS.length) % SCENARIOS.length;
+  socket.emit('reset-activity-state');
+  latestAnswers = {};
+  const s = SCENARIOS[currentQIndex];
+  document.getElementById('scenarioText3_3').textContent = '"' + s.scenario + '"';
+  document.getElementById('scenarioQ3_3').textContent = s.q;
+  document.getElementById('scenarioIdx').textContent = currentQIndex + 1;
+  document.getElementById('explain3_3').style.display = 'none';
+  document.getElementById('votes3_3').innerHTML = '';
+  start_3_3();
+}
+
+/* ═══════════════════════════════════════════
+  ANSWER HANDLERS
+  ═══════════════════════════════════════════ */
+
+function collectAnswers() { return latestAnswers; }
+
+function handleAnswer(teamName, answer, allAnswers, totalTeams) {
+  latestAnswers = allAnswers;
+  if (!currentActivity) return;
+
+  switch(currentActivity) {
+    case '1.1':
+      renderVoteBars('votes1_1', Q_1_1[currentQIndex]?.options || [], allAnswers);
+      break;
+    case '1.3':
+      renderVoteBars('votes1_3', Q_1_3[currentQIndex]?.options || [], allAnswers);
+      break;
+    case '2.2':
+      renderClassifyBars('votes2_2', allAnswers);
+      break;
+    case '2.3':
+      renderVoteBars('votes2_3', shuffledQuiz2_3[currentQIndex]?.options || [], allAnswers);
+      break;
+    case '3.3':
+      renderThreeVoteBars('votes3_3', allAnswers);
+      break;
+    case '1.2': {
+      const body = document.getElementById('obsBody');
+      if (!body) break;
+      body.innerHTML = '';
+      let count = 0;
+      Object.entries(allAnswers).forEach(([team, a]) => {
+        count++;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${team}</td><td>${a.source||'-'}</td><td>${a.spread||'-'}</td><td>${a.note||'-'}</td>`;
+        body.appendChild(tr);
+      });
+      const ce = document.getElementById('obsCount');
+      if (ce) ce.textContent = count + ' gözlem geldi';
+      break;
+    }
+  }
+}
+
+function handleDataPoint(point, allData) {
+  if (currentActivity !== '3.2' || !lineChart) return;
+
+  // Group by team
+  const grouped = {};
+  allData.forEach(d => {
+    if (!grouped[d.teamName]) grouped[d.teamName] = [];
+    grouped[d.teamName].push({ x: d.x, y: d.y });
+  });
+
+  const colors = ['#eb3349','#38ef7d','#667eea','#f9d423','#ff6b6b','#a29bfe','#fd79a8','#00cec9'];
+  lineChart.data.datasets = Object.entries(grouped).map(([name, pts], i) => ({
+    label: name,
+    data: pts.sort((a,b) => a.x - b.x),
+    borderColor: colors[i % colors.length],
+    backgroundColor: colors[i % colors.length] + '40',
+    showLine: true,
+    tension: .3,
+    pointRadius: 5
+  }));
+  lineChart.update();
+
+  const ce = document.getElementById('dataCount');
+  if (ce) ce.textContent = allData.length + ' veri noktası geldi';
+}
+
+/* ═══════════════════════════════════════════
+   STARS
+   ═══════════════════════════════════════════ */
+(function(){
+  const c=document.getElementById('starsC');
+  for(let i=0;i<80;i++){
+    const s=document.createElement('div');s.className='star';
+    const sz=Math.random()*3+1;
+    s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${Math.random()*2+2}s`;
+    c.appendChild(s);
+  }
+})();
+</script>
+</body>
+</html>

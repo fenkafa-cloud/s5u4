@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Öğrenci — Işık Ünitesi</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Nunito',sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:#fff;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+
+/* ── Screens ── */
+.screen{display:none;flex:1;animation:fadeIn .4s}
+.screen.active{display:flex;flex-direction:column}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@keyframes bounceIn{0%{transform:scale(.3);opacity:0}50%{transform:scale(1.05)}70%{transform:scale(.95)}100%{transform:scale(1);opacity:1}}
+@keyframes confetti{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(100vh) rotate(720deg)}}
+
+/* ── Join Screen ── */
+.join-center{flex:1;display:flex;align-items:center;justify-content:center;padding:20px}
+.join-box{text-align:center;width:100%;max-width:400px}
+.join-box h1{font-size:2.2rem;background:linear-gradient(90deg,#f9d423,#ff4e50);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px}
+.join-box p{color:#b8b5ff;margin-bottom:24px;font-size:1rem}
+.input-group{margin-bottom:16px}
+.input-group label{display:block;font-weight:700;font-size:.85rem;color:#b8b5ff;margin-bottom:6px;text-align:left}
+.input-group input{width:100%;padding:14px 18px;border-radius:14px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:'Nunito';font-size:1.1rem;font-weight:700;text-align:center;transition:border-color .3s}
+.input-group input:focus{outline:none;border-color:#667eea}
+.input-group input::placeholder{color:rgba(255,255,255,.3)}
+.pin-input{font-size:2rem!important;letter-spacing:10px!important;font-weight:800!important}
+.join-btn{width:100%;padding:16px;border:none;border-radius:50px;font-family:'Nunito';font-size:1.15rem;font-weight:800;color:#fff;cursor:pointer;transition:all .3s;margin-top:8px}
+.join-btn:hover{transform:scale(1.03)}
+.join-btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.btn-green{background:linear-gradient(135deg,#38ef7d,#11998e)}
+.error-msg{color:#eb3349;font-weight:700;margin-top:12px;min-height:24px}
+.team-presets{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:16px}
+.team-preset{padding:8px 16px;border-radius:50px;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-family:'Nunito';font-weight:700;font-size:.85rem;cursor:pointer;transition:all .3s}
+.team-preset:hover{border-color:#f9d423}
+.team-preset.selected{border-color:#38ef7d;background:rgba(56,239,125,.15)}
+
+/* ── Score Bar ── */
+.score-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08)}
+.score-bar .team-label{font-weight:700;font-size:.95rem}
+.score-bar .score-val{font-size:1.3rem;font-weight:800;background:linear-gradient(90deg,#f9d423,#ff4e50);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.score-bar .score-pop{animation:pulse .4s}
+
+/* ── Waiting ── */
+.waiting-center{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px}
+.waiting-center h2{font-size:1.4rem;color:#b8b5ff;margin-bottom:12px}
+.waiting-center .dots{font-size:2rem;animation:pulse 1.5s infinite}
+
+/* ── Activity Area ── */
+.activity-area{flex:1;display:flex;flex-direction:column;padding:16px;overflow-y:auto}
+.activity-title{font-size:1rem;font-weight:700;color:#b8b5ff;margin-bottom:8px;text-align:center}
+.activity-question{font-size:1.2rem;font-weight:800;text-align:center;padding:16px;background:rgba(255,255,255,.06);border-radius:14px;margin-bottom:16px;line-height:1.5}
+
+/* ── 4-Option Buttons (1.1, 1.3) ── */
+.option-grid{display:grid;grid-template-columns:1fr;gap:10px;flex:1}
+.opt-btn{padding:16px 20px;border:3px solid rgba(255,255,255,.15);border-radius:14px;background:rgba(255,255,255,.05);color:#fff;font-family:'Nunito';font-size:1.05rem;font-weight:700;cursor:pointer;transition:all .3s;text-align:left;display:flex;align-items:center;gap:12px}
+.opt-btn:active{transform:scale(.97)}
+.opt-btn:disabled{cursor:not-allowed;opacity:.7}
+.opt-btn.selected{border-color:#667eea;background:rgba(102,126,234,.2)}
+.opt-btn.correct{border-color:#38ef7d;background:rgba(56,239,125,.2);color:#38ef7d}
+.opt-btn.wrong{border-color:#eb3349;background:rgba(235,51,73,.15);color:#eb3349}
+.opt-letter{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;flex-shrink:0}
+.opt-a .opt-letter{background:rgba(235,51,73,.3);color:#eb3349}
+.opt-b .opt-letter{background:rgba(102,126,234,.3);color:#667eea}
+.opt-c .opt-letter{background:rgba(56,239,125,.3);color:#38ef7d}
+.opt-d .opt-letter{background:rgba(249,212,35,.3);color:#f9d423}
+
+/* ── 3-Category Buttons (2.2, 2.3, 3.3) ── */
+.cat-grid{display:grid;grid-template-columns:1fr;gap:12px;flex:1;align-content:center}
+.cat-btn{padding:22px;border:4px solid;border-radius:18px;font-family:'Nunito';font-size:1.2rem;font-weight:800;cursor:pointer;transition:all .2s;text-align:center}
+.cat-btn:active{transform:scale(.95)}
+.cat-btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.cat-saydam{background:rgba(56,239,125,.1);border-color:#38ef7d;color:#38ef7d}
+.cat-yari{background:rgba(249,212,35,.1);border-color:#f9d423;color:#f9d423}
+.cat-opak{background:rgba(235,51,73,.1);border-color:#eb3349;color:#eb3349}
+.cat-bagimli{background:rgba(102,126,234,.1);border-color:#667eea;color:#667eea}
+.cat-bagimsiz{background:rgba(249,212,35,.1);border-color:#f9d423;color:#f9d423}
+.cat-kontrol{background:rgba(56,239,125,.1);border-color:#38ef7d;color:#38ef7d}
+
+/* ── Material Display ── */
+.mat-display{text-align:center;margin:10px 0}
+.mat-emoji{font-size:5rem;line-height:1.2}
+.mat-name{font-size:1.8rem;font-weight:800;margin:6px 0}
+.mat-counter{color:#888;font-size:.9rem}
+
+/* ── Observation Form (1.2) ── */
+.obs-form{display:flex;flex-direction:column;gap:14px;flex:1}
+.obs-select{width:100%;padding:14px;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:'Nunito';font-size:1rem;font-weight:700;-webkit-appearance:none;appearance:none}
+.obs-select option{background:#302b63;color:#fff}
+.obs-input{width:100%;padding:14px;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:'Nunito';font-size:1rem}
+.obs-input::placeholder{color:rgba(255,255,255,.3)}
+.submit-btn{padding:16px;border:none;border-radius:50px;font-family:'Nunito';font-size:1.1rem;font-weight:800;color:#fff;cursor:pointer;transition:all .3s;width:100%}
+.submit-btn:hover{transform:scale(1.03)}
+.submit-btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+
+/* ── Shadow Controls (3.1) ── */
+.slider-group{margin:12px 0}
+.slider-label{display:flex;justify-content:space-between;font-weight:700;font-size:.9rem;margin-bottom:4px}
+.slider-row{display:flex;align-items:center;gap:10px}
+.slider-row input[type="range"]{-webkit-appearance:none;flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.2);outline:none}
+.slider-row input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#f9d423,#f83600);cursor:pointer}
+.val-input{width:65px;padding:8px;border-radius:8px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-family:'Nunito';font-weight:700;font-size:.95rem;text-align:center}
+.shadow-result{text-align:center;font-size:1.3rem;font-weight:800;padding:14px;background:rgba(255,255,255,.06);border-radius:14px;margin:10px 0}
+.shadow-target{text-align:center;padding:14px;background:rgba(249,212,35,.1);border:2px solid rgba(249,212,35,.3);border-radius:14px;margin:10px 0}
+.shadow-target .t-val{font-size:2rem;font-weight:800;color:#f9d423}
+.shadow-match{border-color:#38ef7d!important;background:rgba(56,239,125,.15)!important}
+
+/* ── Data Input (3.2) ── */
+.data-form{display:flex;flex-direction:column;gap:16px;align-items:center;flex:1;justify-content:center}
+.data-form .input-pair{display:flex;gap:12px;width:100%;max-width:350px}
+.data-form .input-pair .field{flex:1;text-align:center}
+.data-form .input-pair label{display:block;font-weight:700;font-size:.85rem;color:#b8b5ff;margin-bottom:4px}
+.data-form .input-pair input{width:100%;padding:14px;border-radius:12px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-family:'Nunito';font-size:1.2rem;font-weight:700;text-align:center}
+
+/* ── Feedback ── */
+.feedback-msg{text-align:center;padding:14px;border-radius:12px;font-weight:700;margin:10px 0;animation:bounceIn .4s}
+.fb-success{background:rgba(56,239,125,.15);border:1px solid #38ef7d;color:#38ef7d}
+.fb-error{background:rgba(235,51,73,.15);border:1px solid #eb3349;color:#eb3349}
+.fb-info{background:rgba(102,126,234,.15);border:1px solid #667eea;color:#b8b5ff}
+
+/* ── Winner Overlay ── */
+.winner-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;text-align:center;animation:fadeIn .3s}
+.winner-overlay.hidden{display:none}
+.winner-content h1{font-size:3rem;margin-bottom:8px}
+.winner-content h2{font-size:1.8rem;background:linear-gradient(90deg,#f9d423,#ff4e50);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.winner-content p{color:#b8b5ff;margin-top:12px;font-size:1.1rem}
+
+/* ── Leaderboard Mini ── */
+.lb-mini{padding:12px;background:rgba(255,255,255,.05);border-radius:12px;margin-top:auto}
+.lb-mini h4{font-size:.8rem;color:#888;text-align:center;margin-bottom:6px}
+.lb-row{display:flex;justify-content:space-between;padding:4px 8px;font-size:.85rem;font-weight:700}
+.lb-row:first-of-type{color:#f9d423}
+
+/* Stars */
+.stars{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-1;overflow:hidden}
+.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle 3s infinite alternate}
+@keyframes twinkle{0%{opacity:.3}100%{opacity:1}}
+
+/* ── Combo ── */
+.combo-display{text-align:center;font-size:.9rem;font-weight:700;color:#f9d423;margin:6px 0}
+</style>
+</head>
+<body>
+<div class="stars" id="starsC"></div>
+
+<!-- Winner Overlay -->
+<div class="winner-overlay hidden" id="winnerOverlay">
+  <div class="winner-content" id="winnerContent"></div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 1: JOIN
+     ═══════════════════════════════════════ -->
+<div class="screen active" id="joinScreen">
+  <div class="join-center">
+    <div class="join-box">
+      <h1>🔦 Işık Ünitesi</h1>
+      <p>5. Sınıf Fen Bilimleri</p>
+      <div class="input-group">
+        <label>📌 Oda PIN Kodu</label>
+        <input type="text" class="pin-input" id="pinInput" placeholder="• • • •" maxlength="4" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="team-presets">
+        <button class="team-preset" onclick="pickTeam(this,'⚡ Fotonlar')">⚡ Fotonlar</button>
+        <button class="team-preset" onclick="pickTeam(this,'🌑 Gölge Avcıları')">🌑 Gölge Avcıları</button>
+        <button class="team-preset" onclick="pickTeam(this,'🔬 Bilim Kâşifleri')">🔬 Bilim Kâşifleri</button>
+        <button class="team-preset" onclick="pickTeam(this,'☀️ Işık Savaşçıları')">☀️ Işık Savaşçıları</button>
+        <button class="team-preset" onclick="pickTeam(this,'🌈 Prizma Takımı')">🌈 Prizma Takımı</button>
+      </div>
+      <div class="input-group">
+        <label>🏷️ Takım Adı</label>
+        <input type="text" id="teamInput" placeholder="Takım adınızı yazın veya yukarıdan seçin" autocomplete="off">
+      </div>
+      <button class="join-btn btn-green" id="joinBtn" onclick="joinRoom()">🚀 Katıl</button>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 2: LOBBY (waiting)
+     ═══════════════════════════════════════ -->
+<div class="screen" id="lobbyScreen">
+  <div class="score-bar">
+    <span class="team-label" id="myTeamLabel">--</span>
+    <span class="score-val" id="myScore">0 puan</span>
+  </div>
+  <div class="waiting-center">
+    <div>
+      <h2>Öğretmenin etkinliği başlatmasını bekle</h2>
+      <div class="dots">⏳</div>
+      <div class="lb-mini" id="lobbyLB" style="margin-top:30px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     SCREEN 3: ACTIVITY
+     ═══════════════════════════════════════ -->
+<div class="screen" id="activityScreen">
+  <div class="score-bar">
+    <span class="team-label" id="myTeamLabel2">--</span>
+    <span class="score-val" id="myScore2">0 puan</span>
+  </div>
+  <div class="activity-area" id="activityArea"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   SOCKET + STATE
+   ═══════════════════════════════════════════ */
+const socket = io();
+let myTeam = '';
+let myScore = 0;
+let teams = [];
+let currentActivity = null;
+let answered = false;
+let answerStartTime = 0;
+let combo = 0;
+let shadowTarget = null;
+
+/* ── Stars ── */
+(function(){const c=document.getElementById('starsC');for(let i=0;i<60;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*3+1;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${Math.random()*2+2}s`;c.appendChild(s)}})();
+
+/* ═══════════════════════════════════════════
+   JOIN
+   ═══════════════════════════════════════════ */
+function pickTeam(btn, name) {
+  document.querySelectorAll('.team-preset').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('teamInput').value = name;
+}
+
+function joinRoom() {
+  const pin = document.getElementById('pinInput').value.trim();
+  const team = document.getElementById('teamInput').value.trim();
+  if (!pin || pin.length < 4) return showError('4 haneli PIN kodunu gir!');
+  if (!team) return showError('Takım adı gerekli!');
+  document.getElementById('joinBtn').disabled = true;
+  socket.emit('join-room', { pin, teamName: team });
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  setTimeout(() => el.textContent = '', 3000);
+}
+
+document.getElementById('pinInput').addEventListener('input', function() {
+  this.value = this.value.replace(/\D/g, '').slice(0, 4);
+});
+
+/* ═══════════════════════════════════════════
+   SOCKET EVENTS
+   ═══════════════════════════════════════════ */
+socket.on('join-error', ({ message }) => {
+  showError(message);
+  document.getElementById('joinBtn').disabled = false;
+});
+
+socket.on('joined', ({ teamName, teams: t }) => {
+  myTeam = teamName;
+  teams = t;
+  updateScoreDisplay();
+  renderMiniLB();
+  showScreen('lobbyScreen');
+  document.getElementById('myTeamLabel').textContent = myTeam;
+  document.getElementById('myTeamLabel2').textContent = myTeam;
+});
+
+socket.on('scores-updated', ({ teams: t }) => {
+  teams = t;
+  const me = teams.find(x => x.teamName === myTeam);
+  if (me) { myScore = me.score; updateScoreDisplay(); }
+  renderMiniLB();
+});
+
+socket.on('activity-started', (data) => {
+  currentActivity = data.id;
+  answered = false;
+  answerStartTime = Date.now();
+  showScreen('activityScreen');
+  renderActivity(data);
+});
+
+socket.on('activity-ended', () => {
+  currentActivity = null;
+  showScreen('lobbyScreen');
+});
+
+socket.on('answer-revealed', (data) => {
+  revealAnswer(data);
+});
+
+socket.on('shadow-target', (data) => {
+  shadowTarget = data.target;
+  updateShadowTarget();
+});
+
+socket.on('winners-announced', (data) => {
+  showWinners(data);
+});
+
+socket.on('next-item', (data) => {
+  // Reset answered state for next item
+  answered = false;
+  answerStartTime = Date.now();
+  if (data.material) {
+    updateMaterialDisplay(data.material, data.matIndex, data.total);
+    enableCatButtons();
+  }
+});
+
+socket.on('room-closed', () => {
+  alert('Öğretmen odayı kapattı.');
+  location.reload();
+});
+
+socket.on('admin-message', (data) => {
+  // Could show a toast
+});
+
+/* ═══════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function updateScoreDisplay() {
+  const txt = myScore + ' puan';
+  ['myScore', 'myScore2'].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = txt;
+    el.classList.remove('score-pop');
+    void el.offsetWidth;
+    el.classList.add('score-pop');
+  });
+}
+
+function renderMiniLB() {
+  const el = document.getElementById('lobbyLB');
+  if (!teams.length) { el.innerHTML = ''; return; }
+  const sorted = [...teams].sort((a, b) => b.score - a.score).slice(0, 5);
+  el.innerHTML = '<h4>🏆 Puan Tablosu</h4>' + sorted.map(t =>
+    `<div class="lb-row${t.teamName === myTeam ? '" style="color:#38ef7d' : ''}""><span>${t.teamName}</span><span>${t.score}</span></div>`
+  ).join('');
+}
+
+/* ═══════════════════════════════════════════
+   RENDER ACTIVITY
+   ═══════════════════════════════════════════ */
+function renderActivity(data) {
+  const area = document.getElementById('activityArea');
+  switch(data.id) {
+    case '1.1': render_vote(area, data); break;
+    case '1.2': render_obs(area); break;
+    case '1.3': render_vote(area, data); break;
+    case '2.2': render_classify(area, data); break;
+    case '2.3': render_vote(area, data); break;
+    case '3.1': render_shadow(area); break;
+    case '3.2': render_dataInput(area); break;
+    case '3.3': render_variable(area, data); break;
+    default: area.innerHTML = '<div class="waiting-center"><h2>Etkinlik yükleniyor...</h2></div>';
+  }
+}
+
+/* ── 1.1 & 1.3: Vote (A/B/C/D) ── */
+function render_vote(area, data) {
+  const letters = ['A', 'B', 'C', 'D'];
+  const classes = ['opt-a', 'opt-b', 'opt-c', 'opt-d'];
+  const titleMap = {
+    '1.1': '🔬 Simülasyon Oylaması',
+    '1.3': '🧠 Neden Soruları',
+    '2.3': '⚡ Kahoot Çoktan Seçmeli'
+  };
+  area.innerHTML = `
+    <div class="activity-title">${titleMap[data.id] || '🧩 Soru'}</div>
+    <div class="activity-question">${data.question}</div>
+    <div class="option-grid" id="optGrid">
+      ${(data.options || []).map((o, i) => `
+        <button class="opt-btn ${classes[i]}" id="optBtn_${i}" onclick="pickOption(${i})">
+          <span class="opt-letter">${letters[i]}</span>
+          <span>${o.replace(/^[A-D]\)\s*/, '')}</span>
+        </button>`).join('')}
+    </div>
+    <div id="voteFeedback"></div>`;
+}
+
+function pickOption(idx) {
+  if (answered) return;
+  answered = true;
+  const elapsed = (Date.now() - answerStartTime) / 1000;
+  document.querySelectorAll('.opt-btn').forEach((b, i) => {
+    b.disabled = true;
+    if (i === idx) b.classList.add('selected');
+  });
+  socket.emit('submit-answer', { choice: idx, time: elapsed });
+  showFeedback('voteFeedback', 'info', '✅ Cevabın gönderildi!');
+}
+
+/* ── 1.2: Observation Form ── */
+function render_obs(area) {
+  area.innerHTML = `
+    <div class="activity-title">📝 Gözlem Formu</div>
+    <div class="obs-form">
+      <select class="obs-select" id="obsSource">
+        <option value="">Işık Kaynağı Seçin...</option>
+        <option>El Feneri</option><option>Mum</option><option>Güneş</option><option>Lazer</option><option>Lamba</option>
+      </select>
+      <select class="obs-select" id="obsSpread">
+        <option value="">Yayılma Şekli Seçin...</option>
+        <option>Düz çizgi (doğrusal)</option><option>Her yöne doğrusal</option><option>Tek yöne</option><option>Dağılarak</option>
+      </select>
+      <input class="obs-input" id="obsNote" type="text" placeholder="Kısa gözlem notu (opsiyonel)" maxlength="100">
+      <button class="submit-btn btn-green" onclick="submitObs()" id="obsSubmitBtn">📤 Gözlemi Gönder</button>
+      <div id="obsFeedback"></div>
+    </div>`;
+}
+
+function submitObs() {
+  const source = document.getElementById('obsSource').value;
+  const spread = document.getElementById('obsSpread').value;
+  const note = document.getElementById('obsNote').value.trim();
+  if (!source || !spread) return showFeedback('obsFeedback', 'error', '⚠️ Işık kaynağı ve yayılma şekli seçin!');
+  socket.emit('submit-answer', { source, spread, note });
+  document.getElementById('obsSubmitBtn').disabled = true;
+  showFeedback('obsFeedback', 'success', '✅ Gözlemin gönderildi!');
+}
+
+/* ── 2.2: Classify (Saydam / Yarı Saydam / Opak) ── */
+function render_classify(area, data) {
+  const m = data.material || {};
+  area.innerHTML = `
+    <div class="activity-title">⚔️ Takım Savaşı</div>
+    <div class="mat-display">
+      <div class="mat-emoji" id="matEmoji">${m.emoji || '?'}</div>
+      <div class="mat-name" id="matName">${m.name || '--'}</div>
+      <div class="mat-counter" id="matCounter">${(data.matIndex||0)+1} / ${data.total||'?'}</div>
+    </div>
+    <div class="cat-grid" id="catGrid">
+      <button class="cat-btn cat-saydam" id="catBtnSaydam" onclick="pickCategory('saydam')">🟢 Saydam</button>
+      <button class="cat-btn cat-yari" id="catBtnYari" onclick="pickCategory('yariSaydam')">🟡 Yarı Saydam</button>
+      <button class="cat-btn cat-opak" id="catBtnOpak" onclick="pickCategory('opak')">🔴 Saydam Değil</button>
+    </div>
+    <div id="catFeedback"></div>`;
+}
+
+function pickCategory(type) {
+  if (answered) return;
+  answered = true;
+  const elapsed = (Date.now() - answerStartTime) / 1000;
+  disableCatButtons();
+  socket.emit('submit-answer', { choice: type, time: elapsed });
+  showFeedback('catFeedback', 'info', '✅ Cevabın gönderildi!');
+}
+
+function updateMaterialDisplay(m, idx, total) {
+  const emoji = document.getElementById('matEmoji');
+  const name = document.getElementById('matName');
+  const counter = document.getElementById('matCounter');
+  if (emoji) emoji.textContent = m.emoji;
+  if (name) name.textContent = m.name;
+  if (counter) counter.textContent = (idx + 1) + ' / ' + total;
+  clearFeedback('catFeedback');
+}
+
+function enableCatButtons() {
+  ['catBtnSaydam', 'catBtnYari', 'catBtnOpak'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = false;
+  });
+}
+function disableCatButtons() {
+  ['catBtnSaydam', 'catBtnYari', 'catBtnOpak'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+}
+
+/* ── 3.1: Shadow ── */
+function render_shadow(area) {
+  area.innerHTML = `
+    <div class="activity-title">🎯 Hedef Gölge Yarışı</div>
+    <div class="shadow-target" id="shadowTargetBox">
+      <div>🎯 Hedef Gölge Boyutu:</div>
+      <div class="t-val" id="shadowTargetVal">${shadowTarget ? shadowTarget + ' cm' : 'Bekleniyor...'}</div>
+    </div>
+    <div class="shadow-result" id="shadowResult">Gölge: -- cm</div>
+    <div class="slider-group">
+      <div class="slider-label"><span>📏 Cisim Boyutu</span><span id="objSizeLabel">6 cm</span></div>
+      <div class="slider-row">
+        <input type="range" id="objSize" min="2" max="20" value="6" step="0.5" oninput="syncSlider('objSize')">
+        <input type="number" class="val-input" id="objSizeNum" value="6" min="2" max="20" step="0.5" oninput="syncNum('objSize')">
+      </div>
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>💡 Işık Uzaklığı</span><span id="lightDistLabel">20 cm</span></div>
+      <div class="slider-row">
+        <input type="range" id="lightDist" min="5" max="50" value="20" step="0.5" oninput="syncSlider('lightDist')">
+        <input type="number" class="val-input" id="lightDistNum" value="20" min="5" max="50" step="0.5" oninput="syncNum('lightDist')">
+      </div>
+    </div>
+    <div class="slider-group">
+      <div class="slider-label"><span>📐 Perde Uzaklığı</span><span id="screenDistLabel">15 cm</span></div>
+      <div class="slider-row">
+        <input type="range" id="screenDist" min="5" max="30" value="15" step="0.5" oninput="syncSlider('screenDist')">
+        <input type="number" class="val-input" id="screenDistNum" value="15" min="5" max="30" step="0.5" oninput="syncNum('screenDist')">
+      </div>
+    </div>
+    <div class="activity-question" style="font-size:.95rem;padding:12px;background:rgba(255,255,255,.04)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>Işık Uzaklığı (X): <input class="val-input" id="autoX" readonly></div>
+        <div>Gölge Boyutu (Y): <input class="val-input" id="autoY" readonly></div>
+        <div>Cisim Boyutu: <input class="val-input" id="autoObj" readonly></div>
+        <div>Perde Uzaklığı: <input class="val-input" id="autoScreen" readonly></div>
+      </div>
+    </div>
+    <button class="submit-btn btn-green" onclick="submitShadow()" id="shadowSubmitBtn" style="margin-top:12px">🎯 Gönder!</button>
+    <div id="shadowFeedback"></div>`;
+  calcShadow();
+}
+
+function syncSlider(name) {
+  const sl = document.getElementById(name);
+  const num = document.getElementById(name + 'Num');
+  const label = document.getElementById(name + 'Label');
+  num.value = sl.value;
+  if (label) label.textContent = sl.value + ' cm';
+  calcShadow();
+}
+function syncNum(name) {
+  const sl = document.getElementById(name);
+  const num = document.getElementById(name + 'Num');
+  const label = document.getElementById(name + 'Label');
+  let v = parseFloat(num.value);
+  if (isNaN(v)) return;
+  v = Math.max(parseFloat(sl.min), Math.min(parseFloat(sl.max), v));
+  sl.value = v;
+  if (label) label.textContent = v + ' cm';
+  calcShadow();
+}
+
+function calcShadow() {
+  const obj = parseFloat(document.getElementById('objSize')?.value || 6);
+  const light = parseFloat(document.getElementById('lightDist')?.value || 20);
+  const screen = parseFloat(document.getElementById('screenDist')?.value || 15);
+  const shadow = Math.round(obj * (light + screen) / light * 10) / 10;
+
+  const res = document.getElementById('shadowResult');
+  if (res) res.textContent = 'Gölge: ' + shadow + ' cm';
+
+  const autoX = document.getElementById('autoX');
+  const autoY = document.getElementById('autoY');
+  const autoObj = document.getElementById('autoObj');
+  const autoScreen = document.getElementById('autoScreen');
+  if (autoX) autoX.value = light + ' cm';
+  if (autoY) autoY.value = shadow + ' cm';
+  if (autoObj) autoObj.value = obj + ' cm';
+  if (autoScreen) autoScreen.value = screen + ' cm';
+}
+
+function submitShadow() {
+  const obj = parseFloat(document.getElementById('objSize').value);
+  const light = parseFloat(document.getElementById('lightDist').value);
+  const screen = parseFloat(document.getElementById('screenDist').value);
+  const shadow = Math.round(obj * (light + screen) / light * 10) / 10;
+
+  socket.emit('shadow-attempt', { shadowSize: shadow, objSize: obj, lightDist: light, screenDist: screen });
+  showFeedback('shadowFeedback', 'info', '📐 Denemen gönderildi! Gölge: ' + shadow + ' cm');
+}
+
+function updateShadowTarget() {
+  const el = document.getElementById('shadowTargetVal');
+  if (el && shadowTarget) el.textContent = shadowTarget + ' cm';
+}
+
+/* ── 3.2: Data Input ── */
+function render_dataInput(area) {
+  area.innerHTML = `
+    <div class="activity-title">📊 Veri Girişi</div>
+    <div class="activity-question">Simülasyondan elde ettiğin verileri gir.<br>X: Işık Uzaklığı (cm) → Y: Gölge Boyutu (cm)</div>
+    <div class="data-form">
+      <div class="input-pair">
+        <div class="field">
+          <label>Işık Uzaklığı (cm)</label>
+          <input type="number" id="dataX" step="0.5" min="1" placeholder="X">
+        </div>
+        <div class="field">
+          <label>Gölge Boyutu (cm)</label>
+          <input type="number" id="dataY" step="0.5" min="0" placeholder="Y">
+        </div>
+      </div>
+      <button class="submit-btn btn-green" onclick="submitData()" style="max-width:350px">📤 Veri Gönder</button>
+      <div id="dataFeedback"></div>
+      <div id="dataSent" style="color:#888;font-size:.85rem"></div>
+    </div>`;
+}
+
+let dataSentCount = 0;
+function submitData() {
+  const x = parseFloat(document.getElementById('dataX').value);
+  const y = parseFloat(document.getElementById('dataY').value);
+  if (isNaN(x) || isNaN(y)) return showFeedback('dataFeedback', 'error', '⚠️ Her iki değeri de gir!');
+  socket.emit('submit-data', { x, y });
+  dataSentCount++;
+  document.getElementById('dataX').value = '';
+  document.getElementById('dataY').value = '';
+  showFeedback('dataFeedback', 'success', '✅ Veri gönderildi!');
+  document.getElementById('dataSent').textContent = dataSentCount + ' veri gönderildi';
+}
+
+/* ── 3.3: Variable Vote ── */
+function render_variable(area, data) {
+  area.innerHTML = `
+    <div class="activity-title">🔬 Değişken Oylaması</div>
+    <div class="activity-question" style="font-size:1rem;font-style:italic;font-weight:600">"${data.scenario || ''}"</div>
+    <div class="activity-question" style="background:rgba(106,17,203,.15);border:2px solid rgba(106,17,203,.3)">${data.question || ''}</div>
+    <div class="cat-grid">
+      <button class="cat-btn cat-bagimli" id="varBtnBagimli" onclick="pickVariable('bagimli')">🔵 Bağımlı Değişken</button>
+      <button class="cat-btn cat-bagimsiz" id="varBtnBagimsiz" onclick="pickVariable('bagimsiz')">🟠 Bağımsız Değişken</button>
+      <button class="cat-btn cat-kontrol" id="varBtnKontrol" onclick="pickVariable('kontrol')">🟢 Kontrol Edilen</button>
+    </div>
+    <div id="varFeedback"></div>`;
+}
+
+function pickVariable(type) {
+  if (answered) return;
+  answered = true;
+  const elapsed = (Date.now() - answerStartTime) / 1000;
+  ['varBtnBagimli', 'varBtnBagimsiz', 'varBtnKontrol'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+  socket.emit('submit-answer', { choice: type, time: elapsed });
+  showFeedback('varFeedback', 'info', '✅ Oyun gönderildi! Sonucu bekle...');
+}
+
+/* ═══════════════════════════════════════════
+   REVEAL ANSWER
+   ═══════════════════════════════════════════ */
+function revealAnswer(data) {
+  if (!currentActivity) return;
+
+  if (currentActivity === '1.1' || currentActivity === '1.3' || currentActivity === '2.3') {
+    document.querySelectorAll('.opt-btn').forEach((b, i) => {
+      b.classList.remove('selected');
+      b.classList.add(i === data.correct ? 'correct' : 'wrong');
+    });
+  }
+
+  if (currentActivity === '2.2' && data.mode === 'classify') {
+    const map = { saydam: 'catBtnSaydam', yariSaydam: 'catBtnYari', opak: 'catBtnOpak' };
+    Object.entries(map).forEach(([key, id]) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (key === data.correct) {
+        el.style.opacity = '1';
+        el.style.borderWidth = '5px';
+      } else {
+        el.style.opacity = '.45';
+      }
+      el.disabled = true;
+    });
+    showFeedback('catFeedback', 'success', '✅ Doğru cevap: ' + (data.correctLabel || data.correct));
+  }
+
+  if (currentActivity === '3.3') {
+    const map = { bagimli: 'varBtnBagimli', bagimsiz: 'varBtnBagimsiz', kontrol: 'varBtnKontrol' };
+    Object.entries(map).forEach(([key, id]) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.opacity = key === data.correct ? '1' : '.4';
+        if (key === data.correct) el.style.borderWidth = '4px';
+      }
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════
+   WINNERS
+   ═══════════════════════════════════════════ */
+function showWinners(data) {
+  if (!data.winners || !data.winners.length) return;
+  const overlay = document.getElementById('winnerOverlay');
+  const content = document.getElementById('winnerContent');
+  const isMe = data.winners.includes(myTeam);
+
+  if (isMe) {
+    const rank = data.winners.indexOf(myTeam);
+    const medal = rank === 0 ? '🥇' : rank === 1 ? '🥈' : '🥉';
+    content.innerHTML = `<h1>${medal}</h1><h2>${rank + 1}. sırada tamamladın!</h2><p>${myTeam}</p>`;
+  } else {
+    content.innerHTML = `<h1>🏆</h1><h2>Kazananlar:</h2><p>${data.winners.map((w,i) => `${i===0?'🥇':i===1?'🥈':'🥉'} ${w}`).join('<br>')}</p>`;
+  }
+
+  overlay.classList.remove('hidden');
+  setTimeout(() => overlay.classList.add('hidden'), data.final ? 5000 : 3000);
+}
+
+/* ═══════════════════════════════════════════
+   FEEDBACK
+   ═══════════════════════════════════════════ */
+function showFeedback(id, type, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const cls = type === 'success' ? 'fb-success' : type === 'error' ? 'fb-error' : 'fb-info';
+  el.className = 'feedback-msg ' + cls;
+  el.textContent = msg;
+}
+function clearFeedback(id) {
+  const el = document.getElementById(id);
+  if (el) { el.className = ''; el.textContent = ''; }
+}
+</script>
+</body>
+</html>
