@@ -82,6 +82,9 @@ body{font-family:'Nunito',sans-serif;background:linear-gradient(135deg,#0f0c29,#
 .cat-bagimsiz{background:rgba(249,212,35,.1);border-color:#f9d423;color:#f9d423}
 .cat-kontrol{background:rgba(56,239,125,.1);border-color:#38ef7d;color:#38ef7d}
 
+/* ── Simulation Canvas (1.1) ── */
+.sim-canvas{background:#111;border-radius:12px;margin-bottom:12px;width:100%;max-width:100%}
+
 /* ── Material Display ── */
 .mat-display{text-align:center;margin:10px 0}
 .mat-emoji{font-size:5rem;line-height:1.2}
@@ -380,9 +383,13 @@ function render_vote(area, data) {
     '1.3': '🧠 Neden Soruları',
     '2.3': '⚡ Kahoot Çoktan Seçmeli'
   };
+  const simCanvas = data.id === '1.1'
+    ? `<canvas id="simCanvasStudent" class="sim-canvas" width="700" height="220"></canvas>`
+    : '';
   area.innerHTML = `
     <div class="activity-title">${titleMap[data.id] || '🧩 Soru'}</div>
     <div class="activity-question">${data.question}</div>
+    ${simCanvas}
     <div class="option-grid" id="optGrid">
       ${(data.options || []).map((o, i) => `
         <button class="opt-btn ${classes[i]}" id="optBtn_${i}" onclick="pickOption(${i})">
@@ -391,6 +398,64 @@ function render_vote(area, data) {
         </button>`).join('')}
     </div>
     <div id="voteFeedback"></div>`;
+  if (data.id === '1.1') drawStudentSimulation(data.qIndex || 0);
+}
+
+function drawStudentSimulation(index) {
+  const c = document.getElementById('simCanvasStudent');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const sourceX = 70;
+  const targetX = W - 70;
+  const lanes = [H * 0.3, H * 0.5, H * 0.7];
+  const lane = lanes[index % lanes.length];
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = 'rgba(255,255,255,.08)';
+  for (let x = 0; x <= W; x += 50) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+
+  ctx.beginPath();
+  ctx.arc(sourceX, lane, 14, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFD700';
+  ctx.fill();
+  ctx.font = '12px Nunito';
+  ctx.fillStyle = '#c5c3ff';
+  ctx.fillText('Kaynak', sourceX - 22, lane + 30);
+
+  const obsX = W * 0.45;
+  ctx.fillStyle = '#5a67d8';
+  ctx.fillRect(obsX, lane - 45, 20, 90);
+
+  ctx.fillStyle = '#38ef7d';
+  ctx.fillRect(targetX - 8, lane - 25, 16, 50);
+  ctx.fillStyle = '#c5c3ff';
+  ctx.fillText('Hedef', targetX - 20, lane + 42);
+
+  ctx.strokeStyle = 'rgba(255,215,0,.9)';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([10, 8]);
+  ctx.beginPath();
+  ctx.moveTo(sourceX + 14, lane);
+  ctx.lineTo(targetX - 10, lane);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = 'rgba(0,0,0,.6)';
+  ctx.fillRect(obsX + 20, lane - 40, targetX - obsX - 20, 80);
+
+  const label = 'Işık doğrusal yayılır.';
+  ctx.fillStyle = '#f9d423';
+  ctx.font = 'bold 14px Nunito';
+  ctx.fillText(label, (W - ctx.measureText(label).width) / 2, 24);
 }
 
 function pickOption(idx) {
